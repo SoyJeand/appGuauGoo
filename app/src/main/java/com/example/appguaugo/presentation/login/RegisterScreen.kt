@@ -1,3 +1,4 @@
+/*
 package com.example.appguaugo.presentation.login
 
 import androidx.compose.foundation.layout.*
@@ -105,4 +106,4 @@ fun RegisterScreen(
             Text("¿Ya tienes una cuenta? Inicia Sesión")
         }
     }
-}
+}*/

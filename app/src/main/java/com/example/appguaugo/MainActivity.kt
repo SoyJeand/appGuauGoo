@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -25,8 +24,7 @@ import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.presentation.home.HomeScreen
 import com.example.appguaugo.presentation.login.LoginScreen
-import com.example.appguaugo.presentation.login.LoginnScreen
-import com.example.appguaugo.presentation.login.RegisterScreen
+import com.example.appguaugo.presentation.login.RegisterrScreen
 import com.example.appguaugo.presentation.rating.RatingScreen
 import com.example.appguaugo.presentation.search.SearchingScreen
 import com.example.appguaugo.presentation.splash.SplashScreen
@@ -34,9 +32,7 @@ import com.example.appguaugo.presentation.tracking.TrackingScreen
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
 import com.example.appguaugo.viewmodel.LoginUiState
 import com.example.appguaugo.viewmodel.MainViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.example.appguaugo.viewmodel.RegisterUiState
 
 // Asegúrate que el nombre de tu tema sea correcto
 
@@ -86,7 +82,7 @@ class MainActivity : ComponentActivity() {
                             val context = LocalContext.current
                             val loginState by mainViewModel.loginUiState.collectAsState()
 
-                            LoginnScreen(
+                            LoginScreen(
                                 loginState = loginState,
                                 onLoginClick = { correo, contrasenha -> /* Tu lógica de ViewModel aquí */
                                     // La UI solo notifica al ViewModel que el botón fue presionado
@@ -185,31 +181,57 @@ class MainActivity : ComponentActivity() {
 
                         composable("register") {
                             val scope = rememberCoroutineScope()
-                            RegisterScreen(
-                                onRegisterClick = { nombres, apellidos, correo, contrasenha, nTelefono ->
-                                    // 1. Crea la instancia de ClienteEntity
+                            val registerState by mainViewModel.registerUiState.collectAsState()
+                            val context = LocalContext.current
+                            // He renombrado tu pantalla a 'RegisterScreen' para que coincida con el nombre del archivo.
+                            // Si la tuya se llama 'RegisterrScreen', déjalo así.
+                            RegisterrScreen(
+                                registerState = registerState,
+                                onRegisterClick = { nombres, apellidos, correo, contrasenha, fecNacimiento, direccion, telefono ->
+                                    // --- VALIDACIÓN DE CAMPOS VACÍOS (Buena práctica) ---
+                                    if (nombres.isBlank() || apellidos.isBlank() || correo.isBlank() || contrasenha.isBlank()) {
+                                        Toast.makeText(context, "Por favor, completa los campos requeridos", Toast.LENGTH_SHORT).show()
+                                        return@RegisterrScreen // Detiene la ejecución aquí
+                                    }
+
+                                    // 2. Crear el objeto ClienteEntity aquí. <-- CAMBIO
+                                    // Debes construir el objeto 'cliente' con los datos que recibes del formulario.
                                     val nuevoCliente = ClienteEntity(
+                                        // Room se encargará de generar el ID
                                         nombres = nombres,
                                         apellidos = apellidos,
                                         correo = correo,
-                                        contrasenha = contrasenha, // Recuerda encriptar la contraseña en una app real
-                                        nTelefono = nTelefono
+                                        contrasenha = contrasenha, // RECUERDA: Lo ideal es encriptar esto.
+                                        fecNacimiento = fecNacimiento,
+                                        direccion = direccion,
+                                        telefono = telefono
                                     )
 
-                                    // --- LÓGICA DE ROOM ---
-                                    scope.launch {
-                                        val cliente = mainViewModel.insertCliente(nuevoCliente)
-                                    }
-
-                                    // 3. Navega a la pantalla de login
-                                    navController.navigate("login") {
-                                        popUpTo("register") { inclusive = true } // Para que el usuario no vuelva atrás
-                                    }
+                                    // 3. Llamar a la función correcta en el ViewModel. <-- CAMBIO
+                                    // La función que contiene el try-catch y maneja los estados es 'registrarNuevoCliente'.
+                                    mainViewModel.insertCliente(nuevoCliente)
                                 },
-                                onGoToLoginClick = {
-                                    navController.navigate("login")
-                                }
+                                onGoToLoginClick = { navController.navigate("login") }
                             )
+
+                            // El LaunchedEffect que tenías ya es perfecto. No necesita cambios.
+                            LaunchedEffect(registerState) {
+                                when (val state = registerState) {
+                                    is RegisterUiState.Success -> {
+                                        Toast.makeText(context, "¡Registro exitoso!", Toast.LENGTH_SHORT).show()
+                                        navController.navigate("login") {
+                                            popUpTo("register") { inclusive = true }
+                                        }
+                                        mainViewModel.resetRegisterState()
+                                    }
+                                    is RegisterUiState.Error -> {
+                                        Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                                        mainViewModel.resetRegisterState()
+                                    }
+                                    // No es necesario hacer nada en los otros estados aquí.
+                                    else -> { /* No-op */ }
+                                }
+                            }
                         }
 
                         composable("home") {
@@ -217,6 +239,7 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("searching")
                             })
                         }
+
                         composable("searching") {
                             // En un caso real, aquí tendrías lógica para saber si se encontró un paseador
                             // Para este ejemplo, vamos a simular que se encontró y pasamos a la pantalla de tracking.

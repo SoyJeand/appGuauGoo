@@ -13,6 +13,7 @@ interface ClienteDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertCliente(cliente: ClienteEntity): Long
 
+
     @Query("Select * from ClienteEntity where correo=:correo AND contrasenha =:contrasenha LIMIT 1")
     suspend fun validarCliente(correo: String, contrasenha: String): ClienteEntity?
 

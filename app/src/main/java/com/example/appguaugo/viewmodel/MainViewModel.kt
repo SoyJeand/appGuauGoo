@@ -1,5 +1,6 @@
 package com.example.appguaugo.viewmodel
 
+import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,6 +20,13 @@ sealed class LoginUiState {
     object Loading : LoginUiState() // Estado de carga, para mostrar un spinner
     object Success : LoginUiState() // Estado de éxito en el login
     data class Error(val message: String) : LoginUiState() // Estado de error con un mensaje
+}
+
+sealed class RegisterUiState {
+    object Idle : RegisterUiState()
+    object Loading : RegisterUiState()
+    object Success : RegisterUiState()
+    data class Error(val message: String) : RegisterUiState()
 }
 class MainViewModel(private val repository: ClienteRepository): ViewModel() {
     private val _loginUiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
@@ -50,13 +58,55 @@ class MainViewModel(private val repository: ClienteRepository): ViewModel() {
         _loginUiState.value = LoginUiState.Idle
     }
 
-    suspend fun insertCliente(cliente: ClienteEntity) {
+
+    private val _registerUiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val registerUiState = _registerUiState.asStateFlow()
+
+    fun insertCliente(cliente: ClienteEntity) {
+        // Inicia una coroutina en el scope del ViewModel.
+        viewModelScope.launch {
+            // 3. Notifica a la UI que estamos empezando a trabajar.
+            _registerUiState.value = RegisterUiState.Loading
+
+            try {
+                // 4. Ejecuta la operación de base de datos en el hilo de IO (Entrada/Salida).
+                val nuevoId = withContext(Dispatchers.IO) {
+                    repository.insertCliente(cliente)
+                }
+
+                // 5, LA INSERCIÓN FUE EXITOSA.
+                // No hubo excepción. Actualiza la UI al estado de Éxito.
+                _registerUiState.value = RegisterUiState.Success
+                Log.d("REGISTER_VM", "Cliente registrado con éxito. ID: $nuevoId")
+
+            } catch (e: SQLiteConstraintException) {
+                // 6. SI HAY UN CONFLICTO (CORREO DUPLICADO), EL CÓDIGO SALTA AQUÍ.
+                // Actualiza la UI al estado de Error con un mensaje específico.
+                _registerUiState.value = RegisterUiState.Error("Este correo electrónico ya está registrado.")
+                Log.w("REGISTER_VM", "Error de constraint al registrar. Probablemente el correo ya existe.", e)
+
+            } catch (e: Exception) {
+                // 7. Captura cualquier otro tipo de error inesperado (red, etc.).
+                _registerUiState.value = RegisterUiState.Error("Ocurrió un error inesperado.")
+                Log.e("REGISTER_VM", "Error desconocido durante el registro.", e)
+            }
+        }
+    }
+
+    fun resetRegisterState() {
+        _registerUiState.value = RegisterUiState.Idle
+    }
+
+
+    /*suspend fun insertCliente(cliente: ClienteEntity) {
         viewModelScope.launch {
             val filaId = repository.insertCliente(cliente)
             Log.d("ViewModel", "Cliente insertado con ID: $filaId")
 //            GuauApp.db.clienteDao().insertCliente(cliente)
         }
-    }
+    }*/
+
+
 
    /*suspend fun validarUsuario(correo: String, contrasenha: String): ClienteEntity? {
 
@@ -96,60 +146,6 @@ class MainViewModel(private val repository: ClienteRepository): ViewModel() {
         }
     }*/
 
-
-
-
-    fun insertClienteList() {
-        val clientes = listOf(
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perez", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perezz", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321"),
-            ClienteEntity(nombres = "Fulano", apellidos = "Perezzz", correo = "jean@gmail.com", contrasenha = "123456", nTelefono = "987654321")
-
-        )
-
-        viewModelScope.launch(Dispatchers.IO) {
-            GuauApp.db.clienteDao().insertClienteList(clientes)
-        }
-    }
-
-    fun updateCliente() {
-        val clienteEntity = ClienteEntity(idcli = 10, nombres = "Fulano", apellidos = "Perez", correo = "jeandelacruz.214@gmail.com", contrasenha = "ianir.666", nTelefono = "987654321")
-
-        viewModelScope.launch(Dispatchers.IO) {
-            GuauApp.db.clienteDao().updateCliente(clienteEntity)
-        }
-    }
-    fun deleteCliente() {
-        val clienteEntity = ClienteEntity(idcli = 5, "", "", "","","")
-
-        viewModelScope.launch(Dispatchers.IO) {
-            GuauApp.db.clienteDao().deleteCliente(clienteEntity)
-        }
-    }
-
-    fun getAllCliente() {
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val clienteList = GuauApp.db.clienteDao().getAll()
-            clienteList.forEach{
-                Log.d("user", "user = $it")
-            }
-        }
-    }
-
-    fun getAllByIdCliente() {
-
-        viewModelScope.launch(Dispatchers.IO) {
-            GuauApp.db.clienteDao().getAllById(intArrayOf(5))
-        }
-    }
 
 }
 

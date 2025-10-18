@@ -11,6 +11,7 @@ data class ClienteEntity (
     @ColumnInfo(name = "apellidos") val apellidos: String?,
     @ColumnInfo(name = "correo") val correo: String?,
     @ColumnInfo(name = "contrasenha") val contrasenha: String?,
-    @ColumnInfo(name = "n_telefono") val nTelefono: String?,
-
+    @ColumnInfo(name = "fecha_nacimiento") val fecNacimiento: String?,
+    @ColumnInfo(name = "direccion") val direccion: String?,
+    @ColumnInfo(name = "telefono") val telefono: String?,
     )
