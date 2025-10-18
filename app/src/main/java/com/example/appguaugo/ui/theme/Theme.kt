@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -32,6 +33,13 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
+
+// Colores de mi aplicacion LOGIN
+val GuauYellow = Color(0xFFFFC107) // Amarillo principal
+val GuauYellowDark = Color(0xFFF5A623) // Tono más oscuro para el botón
+val GuauBlueText = Color(0xFF00B2A9) // Azul verdoso para los links
+val GuauBackground = Color(0xFFFFFFFF) // Fondo blanco de la tarjeta
+
 
 @Composable
 fun AppGuauGoTheme(
