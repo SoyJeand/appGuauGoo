@@ -4,16 +4,18 @@ import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.appguaugo.application.GuauApp
 import com.example.appguaugo.data.entity.ClienteEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 //  import androidx.lifecycle.ViewModelProvider
-import com.example.appguaugo.data.dao.ClienteDao
 import com.example.appguaugo.data.repository.ClienteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 
 sealed class LoginUiState {
     object Idle : LoginUiState() // Estado inicial, no haciendo nada
@@ -62,31 +64,65 @@ class MainViewModel(private val repository: ClienteRepository): ViewModel() {
     private val _registerUiState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
     val registerUiState = _registerUiState.asStateFlow()
 
-    fun insertCliente(cliente: ClienteEntity) {
-        // Inicia una coroutina en el scope del ViewModel.
+    fun insertCliente(
+        nombres: String,
+        apellidos: String,
+        correo: String,
+        contrasenha: String,
+        fecNacimientoStr: String?,
+        direccion: String?,
+        telefono: String?
+    ) {
         viewModelScope.launch {
             // 3. Notifica a la UI que estamos empezando a trabajar.
             _registerUiState.value = RegisterUiState.Loading
 
+            var fechaNacimientoDate: Date?
             try {
-                // 4. Ejecuta la operación de base de datos en el hilo de IO (Entrada/Salida).
-                val nuevoId = withContext(Dispatchers.IO) {
-                    repository.insertCliente(cliente)
+                if (!fecNacimientoStr.isNullOrBlank()) {
+
+                    val formato = SimpleDateFormat("dd/MM/yyyy", Locale.ROOT)
+                    fechaNacimientoDate = formato.parse(fecNacimientoStr)
+                }else {
+                    // Si el texto está vacío, la fecha es null.
+                    fechaNacimientoDate = null
                 }
 
-                // 5, LA INSERCIÓN FUE EXITOSA.
-                // No hubo excepción. Actualiza la UI al estado de Éxito.
+                // 3. (Opcional pero recomendado) Verificación de nulos post-parseo.
+                // A veces, incluso si no hay excepción, el parseo puede resultar en null.
+                if (!fecNacimientoStr.isNullOrBlank() && fechaNacimientoDate == null) {
+                    // Esto cubre un caso raro donde el parseo falla silenciosamente.
+                    _registerUiState.value = RegisterUiState.Error("Formato de fecha inválido.")
+                    return@launch
+                }
+
+                // --- 4. NUEVO: Creación de la Entidad DENTRO del ViewModel ---
+                val nuevoCliente = ClienteEntity(
+                    nombres = nombres,
+                    apellidos = apellidos,
+                    correo = correo,
+                    contrasenha = contrasenha,
+                    fecNacimiento = fechaNacimientoDate, // Usamos el objeto Date? convertido
+                    direccion = direccion,
+                    telefono = telefono
+                )
+
+                // 5. Ejecuta la inserción en la base de datos (igual que antes, pero con el nuevo objeto)
+                val nuevoId = withContext(Dispatchers.IO) {
+                    repository.insertCliente(nuevoCliente)
+                }
+
+                // 6. Notifica a la UI del éxito (igual que antes)
                 _registerUiState.value = RegisterUiState.Success
                 Log.d("REGISTER_VM", "Cliente registrado con éxito. ID: $nuevoId")
 
             } catch (e: SQLiteConstraintException) {
-                // 6. SI HAY UN CONFLICTO (CORREO DUPLICADO), EL CÓDIGO SALTA AQUÍ.
-                // Actualiza la UI al estado de Error con un mensaje específico.
+                // 7. Manejo del error de correo duplicado (igual que antes)
                 _registerUiState.value = RegisterUiState.Error("Este correo electrónico ya está registrado.")
                 Log.w("REGISTER_VM", "Error de constraint al registrar. Probablemente el correo ya existe.", e)
 
             } catch (e: Exception) {
-                // 7. Captura cualquier otro tipo de error inesperado (red, etc.).
+                // 8. Manejo de cualquier otro error inesperado (igual que antes)
                 _registerUiState.value = RegisterUiState.Error("Ocurrió un error inesperado.")
                 Log.e("REGISTER_VM", "Error desconocido durante el registro.", e)
             }

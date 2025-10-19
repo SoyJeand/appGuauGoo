@@ -55,7 +55,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(60.dp))
 
             Image(
-                painter = painterResource(id = R.drawable.logo_guaugo), // ¡USA TU LOGO AQUÍ!
+                painter = painterResource(id = R.drawable.logo_princ_guaoguao), // ¡USA TU LOGO AQUÍ!
                 contentDescription = "Logo de GuauGuao",
                 modifier = Modifier
                     .size(100.dp)

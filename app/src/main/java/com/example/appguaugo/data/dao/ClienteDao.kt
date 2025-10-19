@@ -14,7 +14,7 @@ interface ClienteDao {
     suspend fun insertCliente(cliente: ClienteEntity): Long
 
 
-    @Query("Select * from ClienteEntity where correo=:correo AND contrasenha =:contrasenha LIMIT 1")
+    @Query("Select * from cliente where correo=:correo AND contrasenha =:contrasenha LIMIT 1")
     suspend fun validarCliente(correo: String, contrasenha: String): ClienteEntity?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -26,10 +26,10 @@ interface ClienteDao {
     @Delete
     suspend fun deleteCliente(cliente: ClienteEntity): Int
 
-    @Query("Select * from ClienteEntity")
+    @Query("Select * from cliente")
     suspend fun getAll(): List<ClienteEntity>
 
-    @Query("Select * from ClienteEntity where idcli in (:clienteIds)")
+    @Query("Select * from cliente where id_cliente in (:clienteIds)")
     suspend fun getAllById(clienteIds: IntArray): List<ClienteEntity>
 
 

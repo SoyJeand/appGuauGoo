@@ -1,6 +1,7 @@
 package com.example.appguaugo
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,8 +24,10 @@ import com.example.appguaugo.application.GuauApp
 import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.presentation.home.HomeScreen
+import com.example.appguaugo.presentation.login.ForgotPasswordScreen
 import com.example.appguaugo.presentation.login.LoginScreen
-import com.example.appguaugo.presentation.login.RegisterrScreen
+import com.example.appguaugo.presentation.login.OlvidoPasswordScreen
+import com.example.appguaugo.presentation.login.RegisterScreen
 import com.example.appguaugo.presentation.rating.RatingScreen
 import com.example.appguaugo.presentation.search.SearchingScreen
 import com.example.appguaugo.presentation.splash.SplashScreen
@@ -138,78 +141,34 @@ class MainActivity : ComponentActivity() {
 
                         }
 
-
-                        /*composable("login") {
-                            val scope = rememberCoroutineScope()
-                            val context = LocalContext.current
-                            LoginScreen(
-                                onLoginSuccess = { correo, contrasenha ->
-
-                                    scope.launch {
-                                        val cliente = mainViewModel.validarUsuario(correo, contrasenha)
-
-                                        // 2. Ahora, toma una decisión basada en el resultado
-                                        if (cliente != null) {
-                                            // ÉXITO: El cliente existe, navega a la pantalla principal
-                                            navController.navigate("home") {
-                                                popUpTo("login") { inclusive = true }
-                                            }
-                                        } else {
-                                            // FRACASO: El cliente es null, muestra un mensaje de error
-                                            // Usamos withContext para asegurarnos de que el Toast se muestre en el hilo principal
-                                            withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_LONG).show()
-                                            }
-                                        }
-                                    }
-
-                                    *//*scope.launch {
-                                        GuauApp.db.clienteDao().validarCliente(correo, contrasenha)
-                                    }*//*
-
-                                    // Cuando el login sea exitoso, vamos al home
-                                    *//*navController.navigate("home") {
-                                        popUpTo("login") { inclusive = true }
-                                    }*//*
-                            }, // Aquí le pasas la "instrucción" de lo que debe hacer
-                                onNavigateToRegister = {
-                                    navController.navigate("register") // <-- ¡LA MAGIA OCURRE AQUÍ!
-                                }
-                            )
-                        }*/
-                        // Dentro de tu NavHost en MainActivity.kt
-
                         composable("register") {
                             val scope = rememberCoroutineScope()
                             val registerState by mainViewModel.registerUiState.collectAsState()
                             val context = LocalContext.current
                             // He renombrado tu pantalla a 'RegisterScreen' para que coincida con el nombre del archivo.
                             // Si la tuya se llama 'RegisterrScreen', déjalo así.
-                            RegisterrScreen(
+                            RegisterScreen(
                                 registerState = registerState,
-                                onRegisterClick = { nombres, apellidos, correo, contrasenha, fecNacimiento, direccion, telefono ->
+                                onRegisterClick = { nombres, apellidos, correo, contrasenha, fecNacimientoStr, direccion, telefono ->
                                     // --- VALIDACIÓN DE CAMPOS VACÍOS (Buena práctica) ---
-                                    if (nombres.isBlank() || apellidos.isBlank() || correo.isBlank() || contrasenha.isBlank()) {
+                                    if (nombres.isBlank() || apellidos.isBlank() || correo.isBlank() || contrasenha.isBlank() || fecNacimientoStr.isNullOrBlank()) {
                                         Toast.makeText(context, "Por favor, completa los campos requeridos", Toast.LENGTH_SHORT).show()
-                                        return@RegisterrScreen // Detiene la ejecución aquí
+                                        return@RegisterScreen // Detiene la ejecución aquí
                                     }
 
-                                    // 2. Crear el objeto ClienteEntity aquí. <-- CAMBIO
-                                    // Debes construir el objeto 'cliente' con los datos que recibes del formulario.
-                                    val nuevoCliente = ClienteEntity(
-                                        // Room se encargará de generar el ID
+
+
+                                    // 3. Llamar a la función correcta en el ViewModel. <-- CAMBIO
+                                    // La función que contiene el try-catch y maneja los estados es 'registrarNuevoCliente'.
+                                    mainViewModel.insertCliente(
                                         nombres = nombres,
                                         apellidos = apellidos,
                                         correo = correo,
                                         contrasenha = contrasenha, // RECUERDA: Lo ideal es encriptar esto.
-                                        fecNacimiento = fecNacimiento,
+                                        fecNacimientoStr = fecNacimientoStr,
                                         direccion = direccion,
                                         telefono = telefono
                                     )
-
-                                    // 3. Llamar a la función correcta en el ViewModel. <-- CAMBIO
-                                    // La función que contiene el try-catch y maneja los estados es 'registrarNuevoCliente'.
-                                    mainViewModel.insertCliente(nuevoCliente)
                                 },
                                 onGoToLoginClick = { navController.navigate("login") }
                             )
@@ -233,6 +192,36 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+
+                        composable("olvido_password") {
+                            val context = LocalContext.current
+
+                            // Aquí es donde llamaremos a nuestra nueva pantalla
+                            OlvidoPasswordScreen(
+                                onSendLinkClick = { email ->
+                                    // --- LÓGICA AL ENVIAR EL ENLACE ---
+                                    // Aquí iría la llamada a tu ViewModel para iniciar el proceso de recuperación.
+                                    // Por ejemplo: mainViewModel.sendPasswordResetEmail(email)
+
+                                    // Por ahora, podemos mostrar un mensaje temporal.
+                                    Log.d("ForgotPassword", "Solicitud de recuperación para: $email")
+                                    Toast.makeText(
+                                        context, // Asegúrate de tener el 'context' disponible
+                                        "Enlace de recuperación enviado a $email",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                    // Opcional: Navegar de vuelta al login después de enviar el enlace.
+                                    navController.popBackStack()
+                                },
+                                onBackToLoginClick = {
+                                    // --- LÓGICA AL VOLVER AL LOGIN ---
+                                    // Simplemente navega hacia atrás en la pila de navegación.
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
 
                         composable("home") {
                             HomeScreen(onSearchClick = {
