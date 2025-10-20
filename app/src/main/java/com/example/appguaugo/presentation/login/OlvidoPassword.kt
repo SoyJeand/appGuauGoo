@@ -22,11 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appguaugo.R // Asegúrate de que esta sea la ruta correcta a tu R
 import com.example.appguaugo.ui.theme.AppGuauGoTheme // O el nombre de tu tema
+import com.example.appguaugo.ui.theme.GuauBlueText
 
 // Define los colores aquí para reutilizarlos y que sea fácil cambiarlos
 val GuauYellow = Color(0xFFFBC02D) // Un amarillo dorado similar a la imagen
 val GuauYellowDark = Color(0xFFF9A825) // Un poco más oscuro para el botón
-val GuauBlueLink = Color(0xFF0288D1) // Un azul claro para el enlace
 
 @Composable
 fun OlvidoPasswordScreen(
@@ -134,7 +134,7 @@ fun OlvidoPasswordScreen(
                     TextButton(onClick = { onBackToLoginClick() }) {
                         Text(
                             "Volver al inicio de sesión",
-                            color = GuauBlueLink,
+                            color = GuauBlueText,
                             fontSize = 14.sp
                         )
                     }

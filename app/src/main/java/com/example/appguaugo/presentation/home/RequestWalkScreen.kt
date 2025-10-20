@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
@@ -34,13 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appguaugo.R
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
+import com.example.appguaugo.ui.theme.GuauYellow
+import com.example.appguaugo.ui.theme.GuauYellowDark
 import kotlinx.coroutines.launch
 
-// Define los colores aquí para reutilizarlos
-val GuauYellow = Color(0xFFFBC02D)
-val GuauYellowDark = Color(0xFFF9A825)
-
-// --- DATOS DE EJEMPLO (Sin cambios) ---
+// Define los colores aquí para reutilizarlos // --- DATOS DE EJEMPLO (Sin cambios) ---
 data class Pet(val id: Int, val name: String, val photoResId: Int)
 val samplePets = listOf(
     Pet(1, "Rocky", R.drawable.logo_princ_guaoguao),
@@ -90,7 +87,7 @@ fun RequestWalkScreen(
         val scaffoldState = rememberBottomSheetScaffoldState(
             bottomSheetState = sheetState
         )
-        var origin by remember { mutableStateOf("Ubicación actual") }
+        var origin by remember { mutableStateOf("") } // el valor con el que inicializa la variable origin.
         var destination by remember { mutableStateOf("") }
         var selectedPet by remember { mutableStateOf<Pet?>(null) }
         var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
@@ -146,44 +143,6 @@ fun RequestWalkScreen(
 
     }
 
-    /*
-    // El estado del BottomSheet (panel deslizable)
-
-
-    // Estados para todos los campos del formulario (sin la hora del paseo)
-    var origin by remember { mutableStateOf("Ubicación actual") }
-    var destination by remember { mutableStateOf("") }
-    var selectedPet by remember { mutableStateOf<Pet?>(null) }
-    var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
-    var observations by remember { mutableStateOf("") }
-
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        // El contenido del panel deslizable
-        sheetContent = {
-            // Ponemos el formulario dentro del panel
-            WalkRequestForm(
-                origin = origin,
-                destination = destination,
-                selectedPet = selectedPet,
-                selectedWalkType = selectedWalkType,
-                observations = observations,
-                onOriginChange = { origin = it },
-                onDestinationChange = { destination = it },
-                onPetSelected = { selectedPet = it },
-                onWalkTypeSelected = { selectedWalkType = it },
-                onObservationsChange = { observations = it },
-                onRequestWalkClick = onRequestWalkClick
-            )
-        },
-        sheetPeekHeight = 200.dp, // Altura del panel cuando está colapsado/parcialmente visible
-        sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        sheetShadowElevation = 8.dp,
-        //sheetContainerColor = Color.White
-    ) {
-        // El contenido de fondo (detrás del panel)
-        MapSimulator() // Aquí irá tu componente real de Google Maps
-    }*/
 }
 
 // --- NUEVO COMPOSABLE: CONTENIDO DEL MENÚ LATERAL ---
@@ -285,7 +244,6 @@ fun WalkRequestForm(
 
         Text(
             text = "Solicitar un Paseo",
-            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
@@ -388,7 +346,7 @@ fun MapSimulator() {
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(text = title,/* style = MaterialTheme.typography.titleMedium,*/ fontWeight = FontWeight.Bold)
         content()
     }
 }
@@ -490,7 +448,7 @@ fun SegmentedButtons(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isSelected) GuauYellowDark.copy(alpha = 0.2f) else Color.Transparent
+                    containerColor = if (isSelected) GuauYellow.copy(alpha = 0.7f) else Color.Transparent
                 )
             ) {
                 Text(text = option, textAlign = TextAlign.Center, color = Color.Black, fontSize = 12.sp)
@@ -500,14 +458,20 @@ fun SegmentedButtons(
 }
 
 
-/*// --- PREVISUALIZACIÓN ---
-@Preview(showBackground = true, device = "id:pixel_4a")
+// --- PREVISUALIZACIÓN ---
+@Preview(showBackground = true, device = "id:pixel_8_pro")
 @Composable
 fun RequestWalkScreenPreview() {
     AppGuauGoTheme {
-        RequestWalkScreen(onRequestWalkClick = {})
+        RequestWalkScreen(
+            onProfileClick = {},
+            onMyPetsClick = {},
+            onLogoutClick = {},
+            onRequestWalkClick = {}
+        )
+
     }
-}*/
+}
 
 
 
