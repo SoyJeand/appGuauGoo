@@ -24,7 +24,7 @@ import com.example.appguaugo.application.GuauApp
 import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.presentation.home.HomeScreen
-import com.example.appguaugo.presentation.login.ForgotPasswordScreen
+import com.example.appguaugo.presentation.home.RequestWalkScreen
 import com.example.appguaugo.presentation.login.LoginScreen
 import com.example.appguaugo.presentation.login.OlvidoPasswordScreen
 import com.example.appguaugo.presentation.login.RegisterScreen
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
 
                                 onGoogleLoginClick = { /* Lógica de login con Google */ },
                                 onRegisterClick = { navController.navigate("register") },
-                                onForgotPasswordClick = { /* Navegar a la pantalla de olvidar contraseña */ }
+                                onForgotPasswordClick = { navController.navigate("olvido_password") }
                             )
 
                             // 3. LA NAVEGACIÓN Y LOS TOASTS SE GESTIONAN AQUÍ, REACCIONANDO AL ESTADO
@@ -222,12 +222,28 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-
+                        // En tu MainActivity.kt, dentro del NavHost
+                        // ... (tus otras rutas como "splash", "login", "register", "forgot_password")
                         composable("home") {
-                            HomeScreen(onSearchClick = {
-                                navController.navigate("searching")
-                            })
+                            val context = LocalContext.current
+
+                            // Aquí llamamos a nuestra nueva pantalla principal
+                            RequestWalkScreen(
+                                onRequestWalkClick = {
+                                    // --- LÓGICA AL SOLICITAR EL PASEO ---
+                                    // Aquí llamarías al ViewModel para procesar la solicitud.
+                                    // Por ejemplo: mainViewModel.submitWalkRequest(...)
+
+                                    // Por ahora, podemos mostrar un mensaje de confirmación
+                                    Log.d("MainActivity", "Botón 'Solicitar paseo' presionado.")
+                                    Toast.makeText(context, "Buscando un paseador...", Toast.LENGTH_SHORT).show()
+
+                                    // O podrías navegar a una pantalla de "Buscando Paseador"
+                                    // navController.navigate("searching_walker")
+                                }
+                            )
                         }
+
 
                         composable("searching") {
                             // En un caso real, aquí tendrías lógica para saber si se encontró un paseador

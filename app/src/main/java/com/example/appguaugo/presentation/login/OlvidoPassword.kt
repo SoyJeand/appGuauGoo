@@ -128,7 +128,7 @@ fun OlvidoPasswordScreen(
                     }
 
                     // Empujamos el enlace de "Volver" hacia abajo
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(32.dp))
 
                     // Botón de texto para volver al inicio de sesión
                     TextButton(onClick = { onBackToLoginClick() }) {
@@ -151,7 +151,7 @@ fun OlvidoPasswordScreen(
 @Composable
 fun ForgotPasswordScreenPreview() {
     AppGuauGoTheme {
-        ForgotPasswordScreen(
+        OlvidoPasswordScreen(
             onSendLinkClick = {},
             onBackToLoginClick = {}
         )

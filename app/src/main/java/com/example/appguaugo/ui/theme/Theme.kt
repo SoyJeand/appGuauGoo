@@ -38,6 +38,7 @@ private val LightColorScheme = lightColorScheme(
 val GuauYellow = Color(0xFFFFC107) // Amarillo principal
 val GuauYellowDark = Color(0xFFF5A623) // Tono más oscuro para el botón
 val GuauBlueText = Color(0xFF00B2A9) // Azul verdoso para los links
+
 val GuauBackground = Color(0xFFFFFFFF) // Fondo blanco de la tarjeta
 
 
