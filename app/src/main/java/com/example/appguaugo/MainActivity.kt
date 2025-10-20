@@ -6,13 +6,26 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -225,23 +238,55 @@ class MainActivity : ComponentActivity() {
                         // En tu MainActivity.kt, dentro del NavHost
                         // ... (tus otras rutas como "splash", "login", "register", "forgot_password")
                         composable("home") {
-                            val context = LocalContext.current
-
-                            // Aquí llamamos a nuestra nueva pantalla principal
                             RequestWalkScreen(
+                                // 1. Acción para el menú: Ir a Perfil
+                                onProfileClick = {
+                                    navController.navigate("profile")
+                                    Log.d("MainActivity", "Navegando a la pantalla de Perfil")
+                                },
+                                // 2. Acción para el menú: Ir a Mis Mascotas
+                                onMyPetsClick = {
+                                    navController.navigate("my_pets")
+                                    Log.d("MainActivity", "Navegando a la pantalla de Mis Mascotas")
+                                },
+                                // 3. Acción para el menú: Cerrar Sesión
+                                onLogoutClick = {
+                                    // Aquí ejecutas la lógica de cierre de sesión
+                                    //mainViewModel.logout()
+                                    //Log.d("MainActivity", "Cerrando sesión del usuario.")
+
+                                    // Navegas de vuelta al login, limpiando toda la pila de navegación
+                                    /*navController.navigate("login") {
+                                        popUpTo("home") { inclusive = true }
+                                    }
+                                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()*/
+                                },
+                                // 4. Acción del botón principal del formulario
                                 onRequestWalkClick = {
-                                    // --- LÓGICA AL SOLICITAR EL PASEO ---
-                                    // Aquí llamarías al ViewModel para procesar la solicitud.
-                                    // Por ejemplo: mainViewModel.submitWalkRequest(...)
-
-                                    // Por ahora, podemos mostrar un mensaje de confirmación
-                                    Log.d("MainActivity", "Botón 'Solicitar paseo' presionado.")
-                                    Toast.makeText(context, "Buscando un paseador...", Toast.LENGTH_SHORT).show()
-
-                                    // O podrías navegar a una pantalla de "Buscando Paseador"
-                                    // navController.navigate("searching_walker")
+                                    //.d("MainActivity", "Solicitando un nuevo paseo...")
+                                    //Toast.makeText(context, "Buscando un paseador...", Toast.LENGTH_SHORT).show()
+                                    // Aquí llamarías a tu ViewModel para procesar la solicitud
+                                    // mainViewModel.requestWalk(origen, destino, mascota, etc.)
                                 }
                             )
+                        }
+
+                        // --- ▼▼▼ DESTINOS PARA LAS OPCIONES DEL MENÚ ▼▼▼ ---
+
+                        // Pantalla de Perfil (Composable temporal como placeholder)
+                        composable("profile") {
+                            // Aquí deberías poner tu Composable `ProfileScreen()` cuando lo crees
+                            ScaffoldWithBackButton(navController = navController, title = "Mi Perfil") {
+                                Text("Contenido de la Pantalla de Perfil")
+                            }
+                        }
+
+                        // Pantalla de Mascotas (Composable temporal como placeholder)
+                        composable("my_pets") {
+                            // Aquí deberías poner tu Composable `MyPetsScreen()` cuando lo crees
+                            ScaffoldWithBackButton(navController = navController, title = "Mis Mascotas") {
+                                Text("Contenido de la Pantalla de Mis Mascotas")
+                            }
                         }
 
 
@@ -269,6 +314,45 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+}
+// ... (Aquí termina el código de tu MainActivity)
+
+
+// COMPONENTE DE AYUDA PARA PANTALLAS SECUNDARIAS
+// Crea un Scaffold con una barra superior que incluye un título y un botón de "atrás".
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScaffoldWithBackButton(
+    navController: androidx.navigation.NavController,
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    // Este es el botón de la flecha para volver
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Volver atrás"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        // Contenedor para el contenido de la pantalla
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
         }
     }
 }

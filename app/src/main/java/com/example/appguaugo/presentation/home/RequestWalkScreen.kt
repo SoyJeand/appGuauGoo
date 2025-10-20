@@ -1,5 +1,6 @@
 package com.example.appguaugo.presentation.home
 
+import androidx.activity.result.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.Image
@@ -11,8 +12,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appguaugo.R
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
+import kotlinx.coroutines.launch
 
 // Define los colores aquí para reutilizarlos
 val GuauYellow = Color(0xFFFBC02D)
@@ -47,17 +53,102 @@ val walkTypes = listOf("Corto (30 min)", "Normal (1 h)", "Extendido (2h)")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestWalkScreen(
+    onProfileClick: () -> Unit,
+    onMyPetsClick: () -> Unit,
+    onLogoutClick: () -> Unit,
     onRequestWalkClick: () -> Unit
 ) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    // El "scope" se usa para abrir/cerrar el drawer mediante código
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            // 3. CONTENIDO DEL MENÚ (definido más abajo)
+            AppDrawerContent(
+                onProfileClick = {
+                    onProfileClick()
+                    scope.launch { drawerState.close() }
+                },
+                onMyPetsClick = {
+                    onMyPetsClick()
+                    scope.launch { drawerState.close() }
+                },
+                onLogoutClick = {
+                    onLogoutClick()
+                    scope.launch { drawerState.close() }
+                }
+            )
+        }
+    ) {
+        val sheetState = rememberStandardBottomSheetState (
+            // Inicia el panel en un estado parcialmente expandido
+            initialValue = SheetValue.PartiallyExpanded,
+            skipHiddenState = true
+        )
+        val scaffoldState = rememberBottomSheetScaffoldState(
+            bottomSheetState = sheetState
+        )
+        var origin by remember { mutableStateOf("Ubicación actual") }
+        var destination by remember { mutableStateOf("") }
+        var selectedPet by remember { mutableStateOf<Pet?>(null) }
+        var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
+        var observations by remember { mutableStateOf("") }
+
+        BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            sheetContent = {
+                WalkRequestForm(
+                    // ... parámetros del formulario ...
+                    origin = origin,
+                    onOriginChange = { origin = it },
+                    destination = destination,
+                    onDestinationChange = { destination = it },
+                    selectedPet = selectedPet,
+                    onPetSelected = { selectedPet = it },
+                    selectedWalkType = selectedWalkType,
+                    onWalkTypeSelected = { selectedWalkType = it },
+                    observations = observations,
+                    onObservationsChange = { observations = it },
+                    onRequestWalkClick = onRequestWalkClick
+                )
+            },
+            sheetPeekHeight = 200.dp,
+            sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            sheetShadowElevation = 8.dp,
+            sheetContainerColor = Color.White
+        ) {
+            // El contenido de fondo (detrás del panel)
+            Box(modifier = Modifier.fillMaxSize()) {
+                MapSimulator() // Tu mapa
+
+                // 4. ICONO PARA ABRIR EL MENÚ
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            drawerState.open()
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.TopStart)
+                        .background(Color.White, CircleShape)
+                        .border(1.dp, Color.LightGray, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Abrir menú de navegación"
+                    )
+                }
+            }
+        }
+
+    }
+
+    /*
     // El estado del BottomSheet (panel deslizable)
-    val sheetState = rememberStandardBottomSheetState (
-        // Inicia el panel en un estado parcialmente expandido
-        initialValue = SheetValue.PartiallyExpanded,
-        skipHiddenState = true
-    )
-    val scaffoldState = rememberBottomSheetScaffoldState(
-        bottomSheetState = sheetState
-    )
+
 
     // Estados para todos los campos del formulario (sin la hora del paseo)
     var origin by remember { mutableStateOf("Ubicación actual") }
@@ -92,6 +183,71 @@ fun RequestWalkScreen(
     ) {
         // El contenido de fondo (detrás del panel)
         MapSimulator() // Aquí irá tu componente real de Google Maps
+    }*/
+}
+
+// --- NUEVO COMPOSABLE: CONTENIDO DEL MENÚ LATERAL ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppDrawerContent(
+    onProfileClick: () -> Unit,
+    onMyPetsClick: () -> Unit,
+    onLogoutClick: () -> Unit
+) {
+    ModalDrawerSheet {
+        // 1. CABECERA DEL MENÚ
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(GuauYellow.copy(alpha = 0.2f))
+                .padding(vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_princ_guaoguao), // Usa una foto de perfil real aquí
+                contentDescription = "Foto de perfil",
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, GuauYellow, CircleShape),
+                contentScale = ContentScale.Crop
+            )
+            Text(
+                text = "Nombre de Usuario", // Usa el nombre real del usuario aquí
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // 2. ÍTEMS DE NAVEGACIÓN
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
+            label = { Text("Mi Perfil") },
+            selected = false, // `selected` se usa para resaltar el ítem actual
+            onClick = onProfileClick
+        )
+
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Pets, contentDescription = null) },
+            label = { Text("Mis Mascotas") },
+            selected = false,
+            onClick = onMyPetsClick,
+            // badge = { Text("3") } // Opcional: para mostrar un contador
+        )
+
+        // Divisor para separar las acciones principales del cierre de sesión
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // 3. ACCIÓN DE CERRAR SESIÓN
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.Logout, contentDescription = null) },
+            label = { Text("Cerrar Sesión") },
+            selected = false,
+            onClick = onLogoutClick
+        )
     }
 }
 
@@ -344,14 +500,14 @@ fun SegmentedButtons(
 }
 
 
-// --- PREVISUALIZACIÓN ---
+/*// --- PREVISUALIZACIÓN ---
 @Preview(showBackground = true, device = "id:pixel_4a")
 @Composable
 fun RequestWalkScreenPreview() {
     AppGuauGoTheme {
         RequestWalkScreen(onRequestWalkClick = {})
     }
-}
+}*/
 
 
 
