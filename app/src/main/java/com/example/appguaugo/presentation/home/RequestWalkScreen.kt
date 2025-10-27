@@ -43,7 +43,20 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-
+// Importaciones para la ubicación y permisos
+import android.content.Context
+import android.location.Geocoder
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.core.location.LocationManagerCompat.getCurrentLocation
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.maps.android.compose.CameraPositionState
 
 
 // Define los colores aquí para reutilizarlos // --- DATOS DE EJEMPLO (Sin cambios) ---
@@ -56,7 +69,7 @@ val samplePets = listOf(
 val walkTypes = listOf("Corto (30 min)", "Normal (1 h)", "Extendido (2h)")
 
 // --- PANTALLA PRINCIPAL CON MAPA Y PANEL DESLIZABLE ---
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class) // <-- Añade)
 @Composable
 fun RequestWalkScreen(
     onProfileClick: () -> Unit,
@@ -67,6 +80,71 @@ fun RequestWalkScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     // El "scope" se usa para abrir/cerrar el drawer mediante código
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val geocoder = remember { Geocoder(context) }
+
+    var origin by remember { mutableStateOf("") } // el valor con el que inicializa la variable origin.
+    var destination by remember { mutableStateOf("") }
+    var selectedPet by remember { mutableStateOf<Pet?>(null) }
+    var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
+    var observations by remember { mutableStateOf("") }
+
+
+    // 1. ESTADO PARA LA UBICACIÓN DEL MARCADOR
+    var markerLocation by remember { mutableStateOf(LatLng(-12.0464, -77.0428)) } // Lima como inicial
+    // 2. ESTADO DE LA CÁMARA
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(markerLocation, 12f)
+    }
+
+
+
+
+    // 1. Mover el estado de los permisos aquí
+    val locationPermissionsState = rememberMultiplePermissionsState(
+        permissions = listOf(
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    )
+    // 2. Mover el launcher para solicitar permisos aquí
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            if (permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+                getCurrentLocation(context) { latLng ->
+                    markerLocation = latLng
+                    // Mueve la cámara y actualiza el campo de texto
+                    scope.launch {
+                        cameraPositionState.animate(
+                            update = CameraUpdateFactory.newLatLngZoom(latLng, 15f),
+                            durationMs = 1000
+                        )
+                    }
+                    getAddressFromLatLng(geocoder, latLng) { address -> origin = address }
+                }
+            }
+        }
+    )
+    // 3. Crear la función que contendrá la lógica del clic
+    val handleMyLocationClick: () -> Unit = {
+        if (locationPermissionsState.allPermissionsGranted) {
+            getCurrentLocation(context) { latLng ->
+                markerLocation = latLng
+                scope.launch {
+                    cameraPositionState.animate(
+                        update = CameraUpdateFactory.newLatLngZoom(latLng, 15f),
+                        durationMs = 1000
+                    )
+                }
+                getAddressFromLatLng(geocoder, latLng) { address -> origin = address }
+            }
+        } else {
+            requestPermissionLauncher.launch(locationPermissionsState.permissions.map { it.permission }.toTypedArray())
+        }
+    }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -96,11 +174,6 @@ fun RequestWalkScreen(
         val scaffoldState = rememberBottomSheetScaffoldState(
             bottomSheetState = sheetState
         )
-        var origin by remember { mutableStateOf("") } // el valor con el que inicializa la variable origin.
-        var destination by remember { mutableStateOf("") }
-        var selectedPet by remember { mutableStateOf<Pet?>(null) }
-        var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
-        var observations by remember { mutableStateOf("") }
 
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
@@ -124,11 +197,21 @@ fun RequestWalkScreen(
             sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             sheetShadowElevation = 8.dp,
             sheetContainerColor = Color.White
-        ) {
+        ) { paddingValues ->
             // El contenido de fondo (detrás del panel)
-            Box(modifier = Modifier.fillMaxSize()) {
-                MapView() // Tu mapa
-
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)) {
+                MapView(
+                    cameraPositionState = cameraPositionState,
+                    markerLocation = markerLocation,
+                    onMapLongClick = { latLng ->
+                        markerLocation = latLng // Actualiza el estado del marcador
+                        getAddressFromLatLng(geocoder, latLng) { address ->
+                            origin = address // Actualiza el campo de texto
+                        }
+                    }
+                ) // Tu mapa
                 // 4. ICONO PARA ABRIR EL MENÚ
                 IconButton(
                     onClick = {
@@ -146,6 +229,17 @@ fun RequestWalkScreen(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "Abrir menú de navegación"
                     )
+                }
+
+                FloatingActionButton(
+                    onClick = { handleMyLocationClick() },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd) // Lo alineamos a la esquina inferior derecha
+                        .padding(bottom = paddingValues.calculateBottomPadding() + 16.dp, end = 16.dp), // Aplicamos el padding del panel + un margen
+                    containerColor = Color.White,
+                    contentColor = GuauYellowDark
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = "Mi Ubicación")
                 }
             }
         }
@@ -322,27 +416,51 @@ fun WalkRequestForm(
 // --- SIMULADOR DE MAPA ---
 // --- MAPA INTERACTIVO (REEMPLAZO DE MapSimulator) ---
 @Composable
-fun MapView() { // Renombrado de MapSimulator a MapView
-    // 1. Define una ubicación inicial para el mapa (Ej: Bogotá, Colombia)
-    val initialLocation = LatLng(-12.0464, -77.0428)
+fun MapView(
+    cameraPositionState: CameraPositionState,
+    markerLocation: LatLng,
+    onMapLongClick: (LatLng) -> Unit
+    //onLocationSelected: (String) -> Unit
+) {
 
-    // 2. Crea un estado para la cámara que recuerde la posición, zoom, etc.
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialLocation, 12f) // Nivel de zoom inicial
-    }
-
-    // 3. El Composable principal del mapa
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState
+        cameraPositionState = cameraPositionState,
+        // --- CAPTURA EL LONG PRESS ---
+        onMapLongClick = onMapLongClick
     ) {
-        // 4. (OPCIONAL) Añade un marcador en la ubicación inicial
+            // El marcador ahora se basa en el estado `markerLocation`
         Marker(
-            state = MarkerState(position = initialLocation),
-            title = "Bogotá",
-            snippet = "Marcador en Bogotá"
+            state = MarkerState(position = markerLocation),
+            title = "Ubicación seleccionada"
         )
-        // Puedes añadir más marcadores aquí si lo necesitas
+    }
+
+}
+
+// --- FUNCIONES DE AYUDA (Helper Functions) ---
+private fun getAddressFromLatLng(geocoder: Geocoder, latLng: LatLng, onAddressFound: (String) -> Unit) {
+    try {
+        // fromLocation() puede ser lento, idealmente se llamaría desde una corrutina
+        val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+        val address = addresses?.firstOrNull()
+        val addressText = address?.getAddressLine(0) ?: "Dirección no encontrada"
+        onAddressFound(addressText)
+    } catch (e: Exception) {
+        onAddressFound("Error al obtener la dirección")
+    }
+}
+
+private fun getCurrentLocation(context: Context, onLocationFound: (LatLng) -> Unit) {
+    val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+    try {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                onLocationFound(LatLng(location.latitude, location.longitude))
+            }
+        }
+    } catch (e: SecurityException) {
+        // Esto no debería pasar si verificamos los permisos antes.
     }
 }
 

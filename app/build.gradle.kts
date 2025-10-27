@@ -113,6 +113,14 @@ dependencies {
 
     // Maps SDK for Android
     implementation ("com.google.android.gms:play-services-maps:18.2.0")
+    // Si usas catálogo de versiones (libs.versions.toml) implementation(libs.accompanist.permissions)
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
+    //Play Servicies Location
+    implementation("com.google.android.gms:play-services-location:21.2.0") // <--- AÑADE ESTA LÍNEA
+
+
+
 
 
 
