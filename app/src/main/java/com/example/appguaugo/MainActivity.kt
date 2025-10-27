@@ -239,6 +239,7 @@ class MainActivity : ComponentActivity() {
                         // ... (tus otras rutas como "splash", "login", "register", "forgot_password")
                         composable("home") {
                             RequestWalkScreen(
+                                navController = navController,
                                 // 1. Acción para el menú: Ir a Perfil
                                 onProfileClick = {
                                     navController.navigate("profile")
@@ -249,18 +250,19 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("my_pets")
                                     Log.d("MainActivity", "Navegando a la pantalla de Mis Mascotas")
                                 },
-                                // 3. Acción para el menú: Cerrar Sesión
+                                // DE MOMENTO NO SE USARA ESTA LOGICA!!!!
+                                /*// 3. Acción para el menú: Cerrar Sesión
                                 onLogoutClick = {
                                     // Aquí ejecutas la lógica de cierre de sesión
                                     //mainViewModel.logout()
                                     //Log.d("MainActivity", "Cerrando sesión del usuario.")
 
                                     // Navegas de vuelta al login, limpiando toda la pila de navegación
-                                    /*navController.navigate("login") {
+                                    *//*navController.navigate("login") {
                                         popUpTo("home") { inclusive = true }
                                     }
-                                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()*/
-                                },
+                                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()*//*
+                                },*/
                                 // 4. Acción del botón principal del formulario
                                 onRequestWalkClick = {
                                     //.d("MainActivity", "Solicitando un nuevo paseo...")

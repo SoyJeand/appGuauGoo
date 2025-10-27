@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -48,10 +47,16 @@ import android.content.Context
 import android.location.Geocoder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.text.TextStyle
 import androidx.core.location.LocationManagerCompat.getCurrentLocation
+import androidx.navigation.NavController
+import coil.compose.ImagePainter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
@@ -72,9 +77,10 @@ val walkTypes = listOf("Corto (30 min)", "Normal (1 h)", "Extendido (2h)")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class) // <-- Añade)
 @Composable
 fun RequestWalkScreen(
+    navController: NavController,
     onProfileClick: () -> Unit,
     onMyPetsClick: () -> Unit,
-    onLogoutClick: () -> Unit,
+    // onLogoutClick: () -> Unit, // no se usara este logica de momento!
     onRequestWalkClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -160,9 +166,28 @@ fun RequestWalkScreen(
                     scope.launch { drawerState.close() }
                 },
                 onLogoutClick = {
+                    // 1. Limpia los datos locales (SharedPreferences, etc.)
+                    // Es buena práctica hacerlo para borrar tokens o datos de usuario.
+                    val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().apply {
+                        remove("user_token") // Usa la clave real de tu token
+                        // remove("cualquier_otro_dato")
+                        apply()
+                    }
+
+                    // 2. Navega a la pantalla de login y limpia el historial
+                    navController.navigate("login") { // "login" debe ser la ruta de tu pantalla de login
+                        popUpTo(0) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+                // NO SE VA USAR DE MOMENTO ESA LOGICA!!!!
+                /*onLogoutClick = {
                     onLogoutClick()
                     scope.launch { drawerState.close() }
-                }
+                }*/
             )
         }
     ) {
@@ -196,7 +221,7 @@ fun RequestWalkScreen(
             sheetPeekHeight = 200.dp,
             sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             sheetShadowElevation = 8.dp,
-            sheetContainerColor = Color.White
+            sheetContainerColor = MaterialTheme.colorScheme.surface
         ) { paddingValues ->
             // El contenido de fondo (detrás del panel)
             Box(modifier = Modifier
@@ -235,7 +260,10 @@ fun RequestWalkScreen(
                     onClick = { handleMyLocationClick() },
                     modifier = Modifier
                         .align(Alignment.BottomEnd) // Lo alineamos a la esquina inferior derecha
-                        .padding(bottom = paddingValues.calculateBottomPadding() + 16.dp, end = 16.dp), // Aplicamos el padding del panel + un margen
+                        .padding(
+                            bottom = paddingValues.calculateBottomPadding() + 16.dp,
+                            end = 16.dp
+                        ), // Aplicamos el padding del panel + un margen
                     containerColor = Color.White,
                     contentColor = GuauYellowDark
                 ) {
@@ -344,13 +372,21 @@ fun WalkRequestForm(
                 .background(Color.LightGray, CircleShape)
                 .align(Alignment.CenterHorizontally)
         )*/
+        Row (modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically){
+            Text(
+                text = "Solicitar un Paseo",
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Image(painter = painterResource(id = R.drawable.dog_walking_icon),
+                contentDescription = null,
+                modifier = Modifier.size(25.dp))
 
-        Text(
-            text = "Solicitar un Paseo",
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
+        }
+
 
         // --- 1. SECCIÓN DE UBICACIÓN ---
         Section(title = "Recorrido del paseo") {
@@ -404,7 +440,7 @@ fun WalkRequestForm(
             colors = ButtonDefaults.buttonColors(containerColor = GuauYellowDark)
         ) {
             Text(
-                "Solicitar paseo 🐾",
+                "Solicitar 🐾",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
@@ -472,7 +508,10 @@ private fun getCurrentLocation(context: Context, onLocationFound: (LatLng) -> Un
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = title,/* style = MaterialTheme.typography.titleMedium,*/ fontWeight = FontWeight.Bold)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge/* style = MaterialTheme.typography.titleMedium,*/
+        )
         content()
     }
 }
@@ -491,7 +530,10 @@ fun LocationInputs(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Desde") },
             leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Lugar de inicio") },
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(
+                fontWeight = FontWeight.Bold
+            )
         )
         OutlinedTextField(
             value = destination,
@@ -499,7 +541,10 @@ fun LocationInputs(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Hasta") },
             leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Lugar de destino", tint = Color.Red) },
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(
+                fontWeight = FontWeight.Bold
+            )
         )
     }
 }
@@ -527,7 +572,10 @@ fun PetSelector(
             label = { Text("Mascota") },
             leadingIcon = { Icon(Icons.Default.Pets, contentDescription = null) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(
+                fontWeight = FontWeight.Bold
+            )
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -563,6 +611,7 @@ fun SegmentedButtons(
     selectedOption: String,
     onOptionSelected: (String) -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -577,19 +626,20 @@ fun SegmentedButtons(
                     containerColor = if (isSelected) GuauYellow.copy(alpha = 0.7f) else Color.Transparent
                 )
             ) {
-                Text(text = option, textAlign = TextAlign.Center, color = Color.Black, fontSize = 12.sp)
+                Text(text = option, textAlign = TextAlign.Center, color = if(isDarkTheme) Color.White else Color.Black, fontSize = 12.sp)
             }
         }
     }
 }
 
 
-// --- PREVISUALIZACIÓN ---
+/*// --- PREVISUALIZACIÓN ---
 @Preview(showBackground = true, device = "id:pixel_8_pro")
 @Composable
 fun RequestWalkScreenPreview() {
     AppGuauGoTheme {
         RequestWalkScreen(
+            navController = { NavController },
             onProfileClick = {},
             onMyPetsClick = {},
             onLogoutClick = {},
@@ -597,7 +647,7 @@ fun RequestWalkScreenPreview() {
         )
 
     }
-}
+}*/
 
 
 
