@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.kotlinKapt)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
 }
 
 android {
@@ -39,12 +40,31 @@ android {
         jvmTarget = "11"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
+        viewBinding = true
     }
-    /*
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }*/
+
+
+    secrets {
+            // Optionally specify a different file name containing your secrets.
+            // The plugin defaults to "local.properties"
+            propertiesFileName = "secrets.properties"
+
+            // A properties file containing default secret values. This file can be
+            // checked in version control.
+            defaultPropertiesFileName = "local.defaults.properties"
+
+            // Configure which keys should be ignored by the plugin by providing regular expressions.
+            // "sdk.dir" is ignored by default.
+            ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
+            ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
+    }
+
+        /*
+        composeOptions {
+            kotlinCompilerExtensionVersion = "1.5.8"
+        }*/
     /*packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -53,6 +73,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.play.services.maps)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.constraintlayout)
     val room_version = "2.6.1"
 
     implementation("androidx.room:room-runtime:$room_version")
@@ -79,11 +102,21 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    // implementation(libs.maps.compose) // Si usas el catálogo de versiones (TOML)
+    implementation("com.google.maps.android:maps-compose:4.3.3") // Revisa la última versión
+
     // Para la navegación entre pantallas
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
     // Para cargar imágenes desde internet (si lo necesitas)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Maps SDK for Android
+    implementation ("com.google.android.gms:play-services-maps:18.2.0")
+
+
+
+
 
 
 

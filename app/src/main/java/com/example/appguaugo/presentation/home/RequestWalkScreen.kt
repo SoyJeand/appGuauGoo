@@ -36,6 +36,15 @@ import com.example.appguaugo.ui.theme.AppGuauGoTheme
 import com.example.appguaugo.ui.theme.GuauYellow
 import com.example.appguaugo.ui.theme.GuauYellowDark
 import kotlinx.coroutines.launch
+// Importaciones para Google Maps Compose
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+
+
 
 // Define los colores aquí para reutilizarlos // --- DATOS DE EJEMPLO (Sin cambios) ---
 data class Pet(val id: Int, val name: String, val photoResId: Int)
@@ -118,7 +127,7 @@ fun RequestWalkScreen(
         ) {
             // El contenido de fondo (detrás del panel)
             Box(modifier = Modifier.fillMaxSize()) {
-                MapSimulator() // Tu mapa
+                MapView() // Tu mapa
 
                 // 4. ICONO PARA ABRIR EL MENÚ
                 IconButton(
@@ -311,33 +320,32 @@ fun WalkRequestForm(
 }
 
 // --- SIMULADOR DE MAPA ---
+// --- MAPA INTERACTIVO (REEMPLAZO DE MapSimulator) ---
 @Composable
-fun MapSimulator() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFDDF0E8)), // Un color verde-azulado claro típico de mapas
-        contentAlignment = Alignment.Center
+fun MapView() { // Renombrado de MapSimulator a MapView
+    // 1. Define una ubicación inicial para el mapa (Ej: Bogotá, Colombia)
+    val initialLocation = LatLng(-12.0464, -77.0428)
+
+    // 2. Crea un estado para la cámara que recuerde la posición, zoom, etc.
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(initialLocation, 12f) // Nivel de zoom inicial
+    }
+
+    // 3. El Composable principal del mapa
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState
     ) {
-        // Marcador visual en el centro del mapa
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = "Marcador de ubicación",
-            modifier = Modifier.size(48.dp),
-            tint = Color.Red.copy(alpha = 0.8f)
+        // 4. (OPCIONAL) Añade un marcador en la ubicación inicial
+        Marker(
+            state = MarkerState(position = initialLocation),
+            title = "Bogotá",
+            snippet = "Marcador en Bogotá"
         )
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = "Aquí va el mapa interactivo",
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            color = Color.White
-        )
+        // Puedes añadir más marcadores aquí si lo necesitas
     }
 }
+
 
 
 // --- COMPONENTES REUTILIZABLES (Section, LocationInputs, PetSelector, SegmentedButtons) ---
