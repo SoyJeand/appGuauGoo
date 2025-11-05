@@ -2,6 +2,7 @@ package com.example.appguaugo.data.repository
 
 import com.example.appguaugo.data.dao.ClienteDao
 import com.example.appguaugo.data.entity.ClienteEntity
+import kotlinx.coroutines.flow.Flow
 
 class ClienteRepository(private val clienteDao: ClienteDao) {
 
@@ -15,9 +16,8 @@ class ClienteRepository(private val clienteDao: ClienteDao) {
         return clienteDao.validarCliente(correo, contrasenha)
     }
 
-    // Llama a la función correspondiente en el DAO para insertar una lista de clientes.
-    suspend fun insertClienteList(clientes: List<ClienteEntity>): List<Long> {
-        return clienteDao.insertClienteList(clientes)
+    fun getClienteById(userId: Int): Flow<ClienteEntity?> {
+        return clienteDao.getClienteById(userId)
     }
 
     // Llama a la función correspondiente en el DAO para actualizar un cliente.

@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
@@ -27,7 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appguaugo.R
@@ -44,7 +42,12 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 // Importaciones para la ubicación y permisos
 import android.content.Context
+import android.content.Intent
 import android.location.Geocoder
+import android.location.LocationManager
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -54,12 +57,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.text.TextStyle
+import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationManagerCompat.getCurrentLocation
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.ImagePainter
+import com.example.appguaugo.application.GuauApp
+import com.example.appguaugo.data.repository.ClienteRepository
+import com.example.appguaugo.viewmodel.ProfileUiState
+import com.example.appguaugo.viewmodel.ProfileViewModel
+import com.example.appguaugo.viewmodel.ProfileViewModelFactory
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.maps.android.compose.CameraPositionState
 
@@ -83,10 +94,25 @@ fun RequestWalkScreen(
     // onLogoutClick: () -> Unit, // no se usara este logica de momento!
     onRequestWalkClick: () -> Unit
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    // El "scope" se usa para abrir/cerrar el drawer mediante código
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
+    val loggedInUserId = prefs.getInt("logged_in_user_id", -1)
+
+    val repository = remember { ClienteRepository(GuauApp.db.clienteDao()) }
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = ProfileViewModelFactory(repository, loggedInUserId)
+    )
+    // Observamos el estado para obtener el nombre.
+    val profileState by profileViewModel.uiState.collectAsState()
+    val userName = when (val state = profileState) {
+        is ProfileUiState.Success -> state.user.nombres // Usamos el nombre real
+        else -> "Cargando..." // Texto temporal mientras se cargan los datos
+    }
+
+    // El "scope" se usa para abrir/cerrar el drawer mediante código
+
     val geocoder = remember { Geocoder(context) }
 
     var origin by remember { mutableStateOf("") } // el valor con el que inicializa la variable origin.
@@ -133,8 +159,16 @@ fun RequestWalkScreen(
             }
         }
     )
+
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        // Este bloque se ejecuta cuando el usuario vuelve de la pantalla de ajustes.
+        // Aquí podríamos volver a comprobar si ya activó la ubicación y re-intentar.
+        // Por simplicidad, podemos dejar que el usuario presione el botón de nuevo.
+    }
     // 3. Crear la función que contendrá la lógica del clic
-    val handleMyLocationClick: () -> Unit = {
+    /*val handleMyLocationClick: () -> Unit = {
         if (locationPermissionsState.allPermissionsGranted) {
             getCurrentLocation(context) { latLng ->
                 markerLocation = latLng
@@ -149,6 +183,42 @@ fun RequestWalkScreen(
         } else {
             requestPermissionLauncher.launch(locationPermissionsState.permissions.map { it.permission }.toTypedArray())
         }
+    }*/
+
+    val handleMyLocationClick: () -> Unit = {
+        // --- ▼▼▼ LÓGICA ACTUALIZADA ▼▼▼ ---
+
+        // 1. Primero, verificar los PERMISOS de la aplicación
+        if (locationPermissionsState.allPermissionsGranted) {
+
+            // 2. Si hay permisos, AHORA verificar si el GPS del teléfono está encendido
+            if (isLocationEnabled(context)) {
+                // ¡TODO CORRECTO! El GPS está encendido, obtenemos la ubicación.
+                getCurrentLocation(context) { latLng ->
+                    markerLocation = latLng
+                    scope.launch {
+                        cameraPositionState.animate(
+                            update = CameraUpdateFactory.newLatLngZoom(latLng, 15f),
+                            durationMs = 1000
+                        )
+                    }
+                    getAddressFromLatLng(geocoder, latLng) { address -> origin = address }
+                }
+            } else {
+                // EL GPS ESTÁ APAGADO.
+                // Le pedimos al usuario que lo encienda.
+                // OPCIÓN A: Mostrar un Toast (rápido y simple)
+                Toast.makeText(context, "Por favor, activa la ubicación de tu dispositivo.", Toast.LENGTH_LONG).show()
+
+                // OPCIÓN B: Llevarlo a los ajustes (recomendado)
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                locationSettingsLauncher.launch(intent)
+            }
+
+        } else {
+            // NO HAY PERMISOS. Solicitarlos como ya lo hacías.
+            requestPermissionLauncher.launch(locationPermissionsState.permissions.map { it.permission }.toTypedArray())
+        }
     }
 
 
@@ -157,6 +227,7 @@ fun RequestWalkScreen(
         drawerContent = {
             // 3. CONTENIDO DEL MENÚ (definido más abajo)
             AppDrawerContent(
+                userName = userName,
                 onProfileClick = {
                     onProfileClick()
                     scope.launch { drawerState.close() }
@@ -280,6 +351,7 @@ fun RequestWalkScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppDrawerContent(
+    userName: String,
     onProfileClick: () -> Unit,
     onMyPetsClick: () -> Unit,
     onLogoutClick: () -> Unit
@@ -304,7 +376,7 @@ fun AppDrawerContent(
                 contentScale = ContentScale.Crop
             )
             Text(
-                text = "Nombre de Usuario", // Usa el nombre real del usuario aquí
+                text = userName, // Usa el nombre real del usuario aquí
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -488,16 +560,30 @@ private fun getAddressFromLatLng(geocoder: Geocoder, latLng: LatLng, onAddressFo
 }
 
 private fun getCurrentLocation(context: Context, onLocationFound: (LatLng) -> Unit) {
-    val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
     try {
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location ->
             if (location != null) {
                 onLocationFound(LatLng(location.latitude, location.longitude))
             }
         }
+            .addOnFailureListener {
+                // Opcional pero recomendado: Manejar el caso en que no se pudo obtener la ubicación
+                // Por ejemplo, mostrar un Toast al usuario.
+                Log.e("LocationError", "No se pudo obtener la ubicación actual.", it)
+                // Aquí podrías intentar con lastLocation como un último recurso
+            }
+
     } catch (e: SecurityException) {
-        // Esto no debería pasar si verificamos los permisos antes.
+        Log.e("LocationPermission", "Faltan permisos de ubicación para getCurrentLocation", e)
     }
+}
+
+// --- ▼▼▼ AÑADE ESTA FUNCIÓN DE AYUDA ▼▼▼ ---
+private fun isLocationEnabled(context: Context): Boolean {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return LocationManagerCompat.isLocationEnabled(locationManager)
 }
 
 

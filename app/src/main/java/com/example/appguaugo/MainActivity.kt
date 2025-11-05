@@ -30,9 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.appguaugo.application.GuauApp
 import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
@@ -41,6 +44,7 @@ import com.example.appguaugo.presentation.home.RequestWalkScreen
 import com.example.appguaugo.presentation.login.LoginScreen
 import com.example.appguaugo.presentation.login.OlvidoPasswordScreen
 import com.example.appguaugo.presentation.login.RegisterScreen
+import com.example.appguaugo.presentation.profile.ProfileScreen
 import com.example.appguaugo.presentation.rating.RatingScreen
 import com.example.appguaugo.presentation.search.SearchingScreen
 import com.example.appguaugo.presentation.splash.SplashScreen
@@ -48,16 +52,20 @@ import com.example.appguaugo.presentation.tracking.TrackingScreen
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
 import com.example.appguaugo.viewmodel.LoginUiState
 import com.example.appguaugo.viewmodel.MainViewModel
+import com.example.appguaugo.viewmodel.ProfileViewModel
+import com.example.appguaugo.viewmodel.ProfileViewModelFactory
 import com.example.appguaugo.viewmodel.RegisterUiState
 
 // Asegúrate que el nombre de tu tema sea correcto
 
 class MainActivity : ComponentActivity() {
 
+    private val repository: ClienteRepository by lazy {
+        ClienteRepository(GuauApp.db.clienteDao())
+    }
     private val mainViewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val repository = ClienteRepository(GuauApp.db.clienteDao())
                 return MainViewModel(repository) as T
             }
         }
@@ -74,8 +82,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+
                     // 1. Creamos el controlador de navegación
                     val navController = rememberNavController()
+                    val context = LocalContext.current // Contexto para SharedPreferences
 
                     // 2. NavHost es el contenedor que cambiará las pantallas
                     NavHost(
@@ -94,15 +104,14 @@ class MainActivity : ComponentActivity() {
                         }
                         // En MainActivity.kt, dentro de tu NavHost
                         composable("login") {
-                            val scope = rememberCoroutineScope()
                             val context = LocalContext.current
-                            val loginState by mainViewModel.loginUiState.collectAsState()
 
                             LoginScreen(
-                                loginState = loginState,
-                                onLoginClick = { correo, contrasenha -> /* Tu lógica de ViewModel aquí */
-                                    // La UI solo notifica al ViewModel que el botón fue presionado
-                                    mainViewModel.validarUsuario(correo, contrasenha)
+                                viewModel = mainViewModel,
+                                onLoginSuccess = { userId ->
+                                    navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true}
+                                    }
 
 //                                    /*scope.launch {
 //                                        val cliente = mainViewModel.validarUsuario(correo, contrasenha)
@@ -128,28 +137,10 @@ class MainActivity : ComponentActivity() {
                                 onForgotPasswordClick = { navController.navigate("olvido_password") }
                             )
 
+
                             // 3. LA NAVEGACIÓN Y LOS TOASTS SE GESTIONAN AQUÍ, REACCIONANDO AL ESTADO
                             // LaunchedEffect se ejecuta cuando 'loginState' cambia.
-                            LaunchedEffect(loginState) {
-                                when (val state = loginState) { // Usamos 'state' para smart casting
-                                    is LoginUiState.Success -> {
-                                        // El ViewModel dijo que el login fue exitoso, entonces navegamos
-                                        navController.navigate("home") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                        // Opcional: Resetea el estado para no volver a navegar si la pantalla se recompone
-                                        mainViewModel.resetLoginState()
-                                    }
-                                    is LoginUiState.Error -> {
-                                        // El ViewModel dijo que hubo un error, entonces mostramos el Toast
-                                        Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                                        mainViewModel.resetLoginState()
-                                    }
-                                    else -> {
-                                        // No hacer nada en los estados Idle o Loading
-                                    }
-                                }
-                            }
+
 
 
                         }
@@ -242,8 +233,16 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 // 1. Acción para el menú: Ir a Perfil
                                 onProfileClick = {
-                                    navController.navigate("profile")
-                                    Log.d("MainActivity", "Navegando a la pantalla de Perfil")
+                                    val prefs = context.getSharedPreferences("mi_app_prefs", MODE_PRIVATE)
+                                    val loggedInUserId = prefs.getInt("logged_in_user_id", -1)
+                                    if (loggedInUserId != -1) {
+                                        // 2. Navegar a la pantalla de perfil, pasando el ID
+                                        navController.navigate("profile/$loggedInUserId")
+                                    } else {
+                                        // Caso de seguridad: si no hay ID, volver a login
+                                        Toast.makeText(context, "Error de sesión, por favor inicie sesión de nuevo.", Toast.LENGTH_LONG).show()
+                                        navController.navigate("login") { popUpTo(0) }
+                                    }
                                 },
                                 // 2. Acción para el menú: Ir a Mis Mascotas
                                 onMyPetsClick = {
@@ -276,11 +275,26 @@ class MainActivity : ComponentActivity() {
                         // --- ▼▼▼ DESTINOS PARA LAS OPCIONES DEL MENÚ ▼▼▼ ---
 
                         // Pantalla de Perfil (Composable temporal como placeholder)
-                        composable("profile") {
-                            // Aquí deberías poner tu Composable `ProfileScreen()` cuando lo crees
-                            ScaffoldWithBackButton(navController = navController, title = "Mi Perfil") {
-                                Text("Contenido de la Pantalla de Perfil")
-                            }
+                        composable(
+                            route = "profile/{userId}",
+                            arguments = listOf(navArgument("userId") {type = NavType.IntType})
+                        ) {
+                            backStackEntry ->
+                            // 1. Extrae el userId de los argumentos de la ruta
+                            val userId = backStackEntry.arguments?.getInt("userId") ?: -1
+
+                            // 2. Crea el ProfileViewModel usando la Factory
+                            // El helper `viewModel()` de Jetpack Compose se encarga de todo.
+                            val profileViewModel: ProfileViewModel =
+                                viewModel(
+                                    factory = ProfileViewModelFactory(repository, userId)
+                            )
+
+                            // 3. Llama a tu pantalla de perfil con el ViewModel
+                            ProfileScreen(
+                                viewModel = profileViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
                         }
 
                         // Pantalla de Mascotas (Composable temporal como placeholder)

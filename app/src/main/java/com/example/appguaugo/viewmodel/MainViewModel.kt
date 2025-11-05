@@ -20,7 +20,8 @@ import java.util.Locale
 sealed class LoginUiState {
     object Idle : LoginUiState() // Estado inicial, no haciendo nada
     object Loading : LoginUiState() // Estado de carga, para mostrar un spinner
-    object Success : LoginUiState() // Estado de éxito en el login
+    //object Success : LoginUiState() // Estado de éxito en el login
+    data class Success(val user: ClienteEntity) : LoginUiState()
     data class Error(val message: String) : LoginUiState() // Estado de error con un mensaje
 }
 
@@ -35,8 +36,31 @@ class MainViewModel(private val repository: ClienteRepository): ViewModel() {
     val loginUiState = _loginUiState.asStateFlow() // La UI observará esta variable
 
     fun validarUsuario(correo: String, contrasenha: String) {
-        // Lanza la coroutina DENTRO del ViewModel
         viewModelScope.launch {
+        _loginUiState.value = LoginUiState.Loading
+
+        try {
+            // La validación se hace en el hilo de IO.
+            val cliente = withContext(Dispatchers.IO) {
+                repository.validarCliente(correo, contrasenha)
+            }
+
+            // La decisión se toma basada en el resultado.
+            if (cliente != null) {
+                // ÉXITO: El estado ahora transporta el objeto ClienteEntity.
+                _loginUiState.value = LoginUiState.Success(cliente)
+                Log.d("LOGIN_VM", "Login exitoso para el usuario ID: ${cliente.id}")
+            } else {
+                // FRACASO: El usuario no fue encontrado o la contraseña es incorrecta.
+                _loginUiState.value = LoginUiState.Error("Correo o contraseña incorrectos")
+            }
+        } catch (e: Exception) {
+            // Manejo de cualquier otro error inesperado durante la validación.
+            _loginUiState.value = LoginUiState.Error("Ocurrió un error inesperado durante el login.")
+            Log.e("LOGIN_VM", "Error desconocido durante la validación.", e)
+        }
+        // Lanza la coroutina DENTRO del ViewModel
+        /*viewModelScope.launch {
             // Cambia el estado a "Cargando"
             _loginUiState.value = LoginUiState.Loading
 
@@ -52,7 +76,7 @@ class MainViewModel(private val repository: ClienteRepository): ViewModel() {
             } else {
                 // Fracaso: Actualiza el estado a Error
                 _loginUiState.value = LoginUiState.Error("Correo o contraseña incorrectos")
-            }
+            }*/
         }
     }
 

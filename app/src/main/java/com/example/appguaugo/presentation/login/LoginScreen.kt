@@ -1,5 +1,7 @@
 package com.example.appguaugo.presentation.login // O el paquete que corresponda
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -27,19 +30,56 @@ import com.example.appguaugo.ui.theme.GuauBlueText
 import com.example.appguaugo.ui.theme.GuauYellow
 import com.example.appguaugo.ui.theme.GuauYellowDark
 import com.example.appguaugo.viewmodel.LoginUiState
+import com.example.appguaugo.viewmodel.MainViewModel
 
 @Composable
 fun LoginScreen(
-    loginState: LoginUiState,
-    onLoginClick: (correo: String, contrasenha: String) -> Unit,
+    viewModel: MainViewModel,
+    onLoginSuccess: (userId: Int) -> Unit,
     onGoogleLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
 ) {
+    val loginState by viewModel.loginUiState.collectAsState()
+    val context = LocalContext.current
+
     // Estados para guardar el contenido de los campos de texto
     var correo by remember { mutableStateOf("") }
     var contrasenha by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+
+    LaunchedEffect(loginState) {
+        when (val state = loginState) {
+            is LoginUiState.Success -> {
+                // 1. Muestra un mensaje de bienvenida.
+                Toast.makeText(context, "¡Bienvenido, ${state.user.nombres}!", Toast.LENGTH_SHORT).show()
+
+                // 2. Guarda el ID del usuario en SharedPreferences.
+                val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
+                prefs.edit().apply {
+                    putInt("logged_in_user_id", state.user.id)
+                    // También podrías guardar el token si lo tuvieras aquí
+                    apply()
+                }
+
+                // 3. Llama al callback para que el NavHost realice la navegación.
+                onLoginSuccess(state.user.id)
+
+                // 4. MUY IMPORTANTE: Resetea el estado para evitar re-navegaciones o Toasts
+                // si el usuario rota la pantalla o vuelve a esta.
+                viewModel.resetLoginState()
+            }
+            is LoginUiState.Error -> {
+                // Muestra el mensaje de error que viene desde el ViewModel.
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetLoginState()
+            }
+            // No necesitamos hacer nada para los estados Loading o Idle aquí.
+            // La UI ya los maneja (mostrando el spinner en el botón).
+            else -> {}
+        }
+    }
 
     // Estructura principal con un Box para superponer los dos colores de fondo
     Box(
@@ -132,7 +172,7 @@ fun LoginScreen(
 
                     // --- BOTONES ---
                     Button(
-                        onClick = { onLoginClick(correo, contrasenha) },
+                        onClick = { viewModel.validarUsuario(correo, contrasenha) },
                         enabled = loginState !is LoginUiState.Loading,
                         modifier = Modifier
                             .fillMaxWidth()

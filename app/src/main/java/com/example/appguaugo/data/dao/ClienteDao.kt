@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.appguaugo.data.entity.ClienteEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ClienteDao {
@@ -16,6 +17,9 @@ interface ClienteDao {
 
     @Query("Select * from cliente where correo=:correo AND contrasenha =:contrasenha LIMIT 1")
     suspend fun validarCliente(correo: String, contrasenha: String): ClienteEntity?
+
+    @Query("SELECT * FROM cliente WHERE id_cliente = :userId")
+    fun getClienteById(userId: Int): Flow<ClienteEntity?>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertClienteList(people:List<ClienteEntity>): List<Long>
