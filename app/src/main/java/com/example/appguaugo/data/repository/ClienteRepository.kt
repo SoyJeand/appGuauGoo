@@ -1,10 +1,15 @@
 package com.example.appguaugo.data.repository
 
 import com.example.appguaugo.data.dao.ClienteDao
+import com.example.appguaugo.data.dao.MascotaDao
 import com.example.appguaugo.data.entity.ClienteEntity
+import com.example.appguaugo.data.entity.MascotaEntity
 import kotlinx.coroutines.flow.Flow
 
-class ClienteRepository(private val clienteDao: ClienteDao) {
+class ClienteRepository(
+    private val clienteDao: ClienteDao,
+    private val mascotaDao: MascotaDao
+) {
 
     // Llama a la función correspondiente en el DAO para insertar un cliente.
     suspend fun insertCliente(cliente: ClienteEntity): Long {
@@ -20,23 +25,22 @@ class ClienteRepository(private val clienteDao: ClienteDao) {
         return clienteDao.getClienteById(userId)
     }
 
-    // Llama a la función correspondiente en el DAO para actualizar un cliente.
-    suspend fun updateCliente(cliente: ClienteEntity): Int {
-        return clienteDao.updateCliente(cliente)
+    // FUNCIONES DE LAS MASCOTAS
+    fun getMascotasByDuenoId(duenoId: Int): Flow<List<MascotaEntity>> {
+        return mascotaDao.getMascotasByDuenoId(duenoId)
     }
 
-    // Llama a la función correspondiente en el DAO para eliminar un cliente.
-    suspend fun deleteCliente(cliente: ClienteEntity): Int {
-        return clienteDao.deleteCliente(cliente)
+    suspend fun insertMascota(mascota: MascotaEntity) {
+        mascotaDao.insertMascota(mascota)
     }
 
-    // Llama a la función correspondiente en el DAO para obtener todos los clientes.
-    suspend fun getAllClientes(): List<ClienteEntity> {
-        return clienteDao.getAll()
-    }
-
-    // Llama a la función correspondiente en el DAO para obtener clientes por sus IDs.
-    suspend fun getAllClientesById(clienteIds: IntArray): List<ClienteEntity> {
-        return clienteDao.getAllById(clienteIds)
-    }
+//    /*// Llama a la función correspondiente en el DAO para obtener todos los clientes.
+//    suspend fun getAllClientes(): List<ClienteEntity> {
+//        return clienteDao.getAll()
+//    }
+//
+//    // Llama a la función correspondiente en el DAO para obtener clientes por sus IDs.
+//    suspend fun getAllClientesById(clienteIds: IntArray): List<ClienteEntity> {
+//        return clienteDao.getAllById(clienteIds)
+//    }*/
 }

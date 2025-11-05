@@ -100,7 +100,7 @@ fun RequestWalkScreen(
     val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
     val loggedInUserId = prefs.getInt("logged_in_user_id", -1)
 
-    val repository = remember { ClienteRepository(GuauApp.db.clienteDao()) }
+    val repository = remember { ClienteRepository(GuauApp.db.clienteDao(), GuauApp.db.mascotaDao()) }
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(repository, loggedInUserId)
     )

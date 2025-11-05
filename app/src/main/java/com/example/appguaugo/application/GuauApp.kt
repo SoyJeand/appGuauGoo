@@ -23,7 +23,9 @@ class GuauApp: Application() {
             applicationContext,
             GuauDb::class.java,
             "guaudb"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
 }

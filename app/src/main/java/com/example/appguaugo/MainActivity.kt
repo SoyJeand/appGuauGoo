@@ -1,5 +1,6 @@
 package com.example.appguaugo
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -44,6 +45,7 @@ import com.example.appguaugo.presentation.home.RequestWalkScreen
 import com.example.appguaugo.presentation.login.LoginScreen
 import com.example.appguaugo.presentation.login.OlvidoPasswordScreen
 import com.example.appguaugo.presentation.login.RegisterScreen
+import com.example.appguaugo.presentation.profile.MascotasScreen
 import com.example.appguaugo.presentation.profile.ProfileScreen
 import com.example.appguaugo.presentation.rating.RatingScreen
 import com.example.appguaugo.presentation.search.SearchingScreen
@@ -52,6 +54,8 @@ import com.example.appguaugo.presentation.tracking.TrackingScreen
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
 import com.example.appguaugo.viewmodel.LoginUiState
 import com.example.appguaugo.viewmodel.MainViewModel
+import com.example.appguaugo.viewmodel.MascotasViewModel
+import com.example.appguaugo.viewmodel.MascotasViewModelFactory
 import com.example.appguaugo.viewmodel.ProfileViewModel
 import com.example.appguaugo.viewmodel.ProfileViewModelFactory
 import com.example.appguaugo.viewmodel.RegisterUiState
@@ -61,7 +65,9 @@ import com.example.appguaugo.viewmodel.RegisterUiState
 class MainActivity : ComponentActivity() {
 
     private val repository: ClienteRepository by lazy {
-        ClienteRepository(GuauApp.db.clienteDao())
+        ClienteRepository(
+            GuauApp.db.clienteDao(),
+            GuauApp.db.mascotaDao())
     }
     private val mainViewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
@@ -299,10 +305,19 @@ class MainActivity : ComponentActivity() {
 
                         // Pantalla de Mascotas (Composable temporal como placeholder)
                         composable("my_pets") {
-                            // Aquí deberías poner tu Composable `MyPetsScreen()` cuando lo crees
-                            ScaffoldWithBackButton(navController = navController, title = "Mis Mascotas") {
-                                Text("Contenido de la Pantalla de Mis Mascotas")
-                            }
+                            // Obtenemos el ID del dueño que ha iniciado sesión
+                            val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
+                            val duenoId = prefs.getInt("logged_in_user_id", -1)
+
+                            // Creamos el ViewModel específico para esta pantalla
+                            val mascotasViewModel: MascotasViewModel = viewModel(
+                                factory = MascotasViewModelFactory(repository, duenoId)
+                            )
+
+                            MascotasScreen(
+                                viewModel = mascotasViewModel,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
                         }
 
 

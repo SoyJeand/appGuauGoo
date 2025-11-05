@@ -2,24 +2,34 @@ package com.example.appguaugo.data.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.Date
 
-/*
+
 @Entity(
-    tableName = "cliente",
-    indices = [Index(value = ["correo"], unique = true)]
+    tableName = "mascota",
+    foreignKeys = [
+        ForeignKey(
+            entity = ClienteEntity::class,
+            parentColumns = ["id_cliente"],
+            childColumns = ["duenoId"],
+            onDelete = ForeignKey.CASCADE // Si se borra el dueño, se borran sus mascotas
+        )
+    ],
+    indices = [Index(value = ["duenoId"])]
 )
-data class MascotaEntity (
+data class MascotaEntity(
     @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "id_cliente")
+    @ColumnInfo(name = "id_mascota")
     val id: Int = 0,
-    @ColumnInfo(name = "nombres") val nombres: String,
-    @ColumnInfo(name = "apellidos") val apellidos: String,
-    @ColumnInfo(name = "correo") val correo: String,
-    @ColumnInfo(name = "contrasenha") val contrasenha: String,
-    @ColumnInfo(name = "fecha_nacimiento") val fecNacimiento: Date?,
-    @ColumnInfo(name = "direccion") val direccion: String?,
-    @ColumnInfo(name = "telefono") val telefono: String?,
-)*/
+    @ColumnInfo(name = "duenoId") val duenoId: Int,
+    @ColumnInfo(name = "nombre") val nombre: String,
+    @ColumnInfo(name = "tipo") val tipo: String,
+    @ColumnInfo(name = "raza") val raza: String,
+    @ColumnInfo(name = "edad") val edad: Int,
+    @ColumnInfo(name = "peso") val peso: Double,
+    @ColumnInfo(name = "comportamiento") val comportamiento: String
+
+    )
