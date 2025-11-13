@@ -14,7 +14,6 @@ interface ClienteDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertCliente(cliente: ClienteEntity): Long
 
-
     @Query("Select * from cliente where correo=:correo AND contrasenha =:contrasenha LIMIT 1")
     suspend fun validarCliente(correo: String, contrasenha: String): ClienteEntity?
 
@@ -36,6 +35,10 @@ interface ClienteDao {
     @Query("Select * from cliente where id_cliente in (:clienteIds)")
     suspend fun getAllById(clienteIds: IntArray): List<ClienteEntity>
 
+    // --- SCRUM 13: AÑADIR ESTAS FUNCIONES ---
+    @Query("SELECT COUNT(*) FROM cliente WHERE correo = :email")
+    suspend fun checkEmailExists(email: String): Boolean
 
-
+    @Query("SELECT * FROM cliente WHERE correo = :email LIMIT 1")
+    suspend fun getClienteByEmail(email: String): ClienteEntity?
 }

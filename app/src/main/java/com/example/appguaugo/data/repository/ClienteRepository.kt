@@ -34,13 +34,16 @@ class ClienteRepository(
         mascotaDao.insertMascota(mascota)
     }
 
-//    /*// Llama a la función correspondiente en el DAO para obtener todos los clientes.
-//    suspend fun getAllClientes(): List<ClienteEntity> {
-//        return clienteDao.getAll()
-//    }
-//
-//    // Llama a la función correspondiente en el DAO para obtener clientes por sus IDs.
-//    suspend fun getAllClientesById(clienteIds: IntArray): List<ClienteEntity> {
-//        return clienteDao.getAllById(clienteIds)
-//    }*/
+    suspend fun updateCliente(cliente: ClienteEntity): Int {
+        return clienteDao.updateCliente(cliente)
+    }
+
+    // --- SCRUM 13: AÑADIR ESTAS FUNCIONES ---
+    suspend fun checkEmailExists(email: String): Boolean {
+        return clienteDao.checkEmailExists(email)
+    }
+
+    suspend fun getClienteByEmail(email: String): ClienteEntity? {
+        return clienteDao.getClienteByEmail(email)
+    }
 }

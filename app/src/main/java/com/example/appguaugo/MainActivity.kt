@@ -56,6 +56,8 @@ import com.example.appguaugo.viewmodel.LoginUiState
 import com.example.appguaugo.viewmodel.MainViewModel
 import com.example.appguaugo.viewmodel.MascotasViewModel
 import com.example.appguaugo.viewmodel.MascotasViewModelFactory
+import com.example.appguaugo.viewmodel.PasswordRecoveryState
+import com.example.appguaugo.viewmodel.PasswordRecoveryViewModel
 import com.example.appguaugo.viewmodel.ProfileViewModel
 import com.example.appguaugo.viewmodel.ProfileViewModelFactory
 import com.example.appguaugo.viewmodel.RegisterUiState
@@ -205,31 +207,43 @@ class MainActivity : ComponentActivity() {
 
                         composable("olvido_password") {
                             val context = LocalContext.current
+                            val passwordRecoveryViewModel: PasswordRecoveryViewModel = viewModel(
+                                factory = object : ViewModelProvider.Factory {
+                                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                        return PasswordRecoveryViewModel(repository) as T
+                                    }
+                                }
+                            )
+                            val recoveryState by passwordRecoveryViewModel.recoveryState.collectAsState()
 
-                            // Aquí es donde llamaremos a nuestra nueva pantalla
                             OlvidoPasswordScreen(
                                 onSendLinkClick = { email ->
-                                    // --- LÓGICA AL ENVIAR EL ENLACE ---
-                                    // Aquí iría la llamada a tu ViewModel para iniciar el proceso de recuperación.
-                                    // Por ejemplo: mainViewModel.sendPasswordResetEmail(email)
-
-                                    // Por ahora, podemos mostrar un mensaje temporal.
-                                    Log.d("ForgotPassword", "Solicitud de recuperación para: $email")
-                                    Toast.makeText(
-                                        context, // Asegúrate de tener el 'context' disponible
-                                        "Enlace de recuperación enviado a $email",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-
-                                    // Opcional: Navegar de vuelta al login después de enviar el enlace.
-                                    navController.popBackStack()
+                                    passwordRecoveryViewModel.sendRecoveryEmail(email)
                                 },
                                 onBackToLoginClick = {
-                                    // --- LÓGICA AL VOLVER AL LOGIN ---
-                                    // Simplemente navega hacia atrás en la pila de navegación.
                                     navController.popBackStack()
                                 }
                             )
+
+                            // Manejar el estado de recuperación
+                            LaunchedEffect(recoveryState) {
+                                when (recoveryState) {
+                                    is PasswordRecoveryState.Loading -> {
+                                        Toast.makeText(context, "Enviando enlace de recuperación...", Toast.LENGTH_SHORT).show()
+                                    }
+                                    is PasswordRecoveryState.Success -> {
+                                        Toast.makeText(context, "Enlace de recuperación enviado a tu correo", Toast.LENGTH_LONG).show()
+                                        navController.popBackStack()
+                                        passwordRecoveryViewModel.resetRecoveryState()
+                                    }
+                                    is PasswordRecoveryState.Error -> {
+                                        val errorState = recoveryState as PasswordRecoveryState.Error
+                                        Toast.makeText(context, errorState.message, Toast.LENGTH_LONG).show()
+                                        passwordRecoveryViewModel.resetRecoveryState()
+                                    }
+                                    else -> {}
+                                }
+                            }
                         }
 
                         // En tu MainActivity.kt, dentro del NavHost
