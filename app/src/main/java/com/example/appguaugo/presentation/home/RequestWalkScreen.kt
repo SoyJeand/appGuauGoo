@@ -52,11 +52,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationManagerCompat.getCurrentLocation
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -120,6 +122,11 @@ fun RequestWalkScreen(
     var selectedPet by remember { mutableStateOf<Pet?>(null) }
     var selectedWalkType by remember { mutableStateOf(walkTypes.first()) }
     var observations by remember { mutableStateOf("") }
+
+    // --- ▼▼▼ CAMBIO 1: AÑADIR ESTADOS PARA EL NUMBER SHEET ▼▼▼ ---
+    var showCostSheet by remember { mutableStateOf(false) }
+    var costValue by remember { mutableStateOf("") }
+    val costSheetState = rememberModalBottomSheetState()
 
 
     // 1. ESTADO PARA LA UBICACIÓN DEL MARCADOR
@@ -286,7 +293,15 @@ fun RequestWalkScreen(
                     onWalkTypeSelected = { selectedWalkType = it },
                     observations = observations,
                     onObservationsChange = { observations = it },
-                    onRequestWalkClick = onRequestWalkClick
+                    onRequestWalkClick = {
+                        // Ahora, en lugar de guardar, abrimos el panel para pedir el costo.
+                        // Validamos que los campos principales no estén vacíos antes de continuar.
+                        if (origin.isBlank() || destination.isBlank() || selectedPet == null) {
+                            Toast.makeText(context, "Completa el recorrido y selecciona una mascota.", Toast.LENGTH_LONG).show()
+                        } else {
+                            showCostSheet = true
+                        }
+                    }
                 )
             },
             sheetPeekHeight = 200.dp,
@@ -341,6 +356,54 @@ fun RequestWalkScreen(
                     Icon(Icons.Default.MyLocation, contentDescription = "Mi Ubicación")
                 }
             }
+        }
+
+        if (showCostSheet) {
+            NumberSheet(
+                sheetState = costSheetState,
+                value = costValue,
+                onValueChange = { costValue = it },
+                onDismiss = {
+                    showCostSheet = false
+                    costValue = "" // Limpia el valor si el usuario cancela
+                },
+                onConfirm = {
+                    // --- ▼▼▼ CAMBIO 4: LÓGICA DE CONFIRMACIÓN FINAL ▼▼▼ ---
+                    // Ocultamos el sheet primero
+                    showCostSheet = false
+
+                    // Validamos que el costo no esté vacío
+                    if (costValue.isBlank()) {
+                        Toast.makeText(context, "Debes ingresar un costo.", Toast.LENGTH_SHORT).show()
+                        costValue = "" // Limpiamos por si acaso
+                        return@NumberSheet // Detenemos la ejecución aquí
+                    }
+
+                    // SIMULACIÓN: Recopilamos todos los datos y los mostramos en un Toast largo.
+                    // En el futuro, aquí es donde llamarías a tu ViewModel para guardar en la DB.
+                    val summary = """
+                    ¡Paseo Solicitado! (Simulación)
+                    - Origen: $origin
+                    - Destino: $destination
+                    - Mascota: ${selectedPet?.name}
+                    - Tipo de Paseo: $selectedWalkType
+                    - Costo: S/ $costValue
+                    - Observaciones: ${observations.ifBlank { "Ninguna" }}
+                """.trimIndent()
+
+                    Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
+
+                    //Para mostrar en el lodCat (para devs)
+                    Log.d("RequestWalkDebug", summary)
+
+                    // Limpiamos todos los campos para la próxima solicitud
+                    origin = ""
+                    destination = ""
+                    selectedPet = null
+                    observations = ""
+                    costValue = ""
+                }
+            )
         }
 
     }
@@ -718,6 +781,48 @@ fun SegmentedButtons(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NumberSheet(
+    sheetState: SheetState,
+    value: String,
+    onValueChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Text("Ingresa tu precio S/. ", fontSize = 20.sp)
+
+            Spacer(Modifier.height(16.dp))
+
+            TextField(
+                value = value,
+                onValueChange = { if (it.all(Char::isDigit)) onValueChange(it) },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Aceptar")
+            }
+        }
+    }
+}
 
 /*// --- PREVISUALIZACIÓN ---
 @Preview(showBackground = true, device = "id:pixel_8_pro")
