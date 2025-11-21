@@ -38,6 +38,14 @@ val Typography = Typography(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold, // Botones en negrita
         fontSize = 16.sp
+    ),
+
+    bodySmall = TextStyle(
+        fontFamily = AppFontFamily,
+        fontWeight = FontWeight.ExtraBold, // Este es el peso normal
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp
     )
     /* Puedes añadir más estilos como titleMedium, bodyMedium, etc. */
 )

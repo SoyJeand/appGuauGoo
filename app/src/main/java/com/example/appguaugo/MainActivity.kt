@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,9 +37,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.appguaugo.application.GuauApp
-import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
-import com.example.appguaugo.presentation.home.HomeScreen
 import com.example.appguaugo.presentation.home.RequestWalkScreen
 import com.example.appguaugo.presentation.home.TarifasOfrecidasCliView
 import com.example.appguaugo.presentation.login.LoginScreen
@@ -53,7 +50,6 @@ import com.example.appguaugo.presentation.search.SearchingScreen
 import com.example.appguaugo.presentation.splash.SplashScreen
 import com.example.appguaugo.presentation.tracking.TrackingScreen
 import com.example.appguaugo.ui.theme.AppGuauGoTheme
-import com.example.appguaugo.viewmodel.LoginUiState
 import com.example.appguaugo.viewmodel.MainViewModel
 import com.example.appguaugo.viewmodel.MascotasViewModel
 import com.example.appguaugo.viewmodel.MascotasViewModelFactory
