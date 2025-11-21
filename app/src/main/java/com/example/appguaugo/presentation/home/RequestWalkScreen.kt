@@ -52,12 +52,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationManagerCompat.getCurrentLocation
@@ -69,6 +71,8 @@ import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.viewmodel.ProfileUiState
 import com.example.appguaugo.viewmodel.ProfileViewModel
 import com.example.appguaugo.viewmodel.ProfileViewModelFactory
+import com.example.appguaugo.viewmodel.RequestWalkViewModel
+import com.example.appguaugo.viewmodel.RequestWalkViewModelFactory
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
@@ -102,7 +106,10 @@ fun RequestWalkScreen(
     val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
     val loggedInUserId = prefs.getInt("logged_in_user_id", -1)
 
-    val repository = remember { ClienteRepository(GuauApp.db.clienteDao(), GuauApp.db.mascotaDao()) }
+    val repository = remember { ClienteRepository(
+        GuauApp.db.clienteDao(),
+        GuauApp.db.mascotaDao(),
+        GuauApp.db.solicitudPaseoDao()) }
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(repository, loggedInUserId)
     )
@@ -112,6 +119,10 @@ fun RequestWalkScreen(
         is ProfileUiState.Success -> state.user.nombres // Usamos el nombre real
         else -> "Cargando..." // Texto temporal mientras se cargan los datos
     }
+
+    val requestWalkViewModel: RequestWalkViewModel = viewModel(
+        factory = RequestWalkViewModelFactory(repository) // Asume que 'repository' ya está disponible
+    )
 
     // El "scope" se usa para abrir/cerrar el drawer mediante código
 
@@ -174,23 +185,6 @@ fun RequestWalkScreen(
         // Aquí podríamos volver a comprobar si ya activó la ubicación y re-intentar.
         // Por simplicidad, podemos dejar que el usuario presione el botón de nuevo.
     }
-    // 3. Crear la función que contendrá la lógica del clic
-    /*val handleMyLocationClick: () -> Unit = {
-        if (locationPermissionsState.allPermissionsGranted) {
-            getCurrentLocation(context) { latLng ->
-                markerLocation = latLng
-                scope.launch {
-                    cameraPositionState.animate(
-                        update = CameraUpdateFactory.newLatLngZoom(latLng, 15f),
-                        durationMs = 1000
-                    )
-                }
-                getAddressFromLatLng(geocoder, latLng) { address -> origin = address }
-            }
-        } else {
-            requestPermissionLauncher.launch(locationPermissionsState.permissions.map { it.permission }.toTypedArray())
-        }
-    }*/
 
     val handleMyLocationClick: () -> Unit = {
         // --- ▼▼▼ LÓGICA ACTUALIZADA ▼▼▼ ---
@@ -368,40 +362,30 @@ fun RequestWalkScreen(
                     costValue = "" // Limpia el valor si el usuario cancela
                 },
                 onConfirm = {
-                    // --- ▼▼▼ CAMBIO 4: LÓGICA DE CONFIRMACIÓN FINAL ▼▼▼ ---
-                    // Ocultamos el sheet primero
                     showCostSheet = false
+                    val costoDouble = costValue.toDoubleOrNull()
 
-                    // Validamos que el costo no esté vacío
-                    if (costValue.isBlank()) {
-                        Toast.makeText(context, "Debes ingresar un costo.", Toast.LENGTH_SHORT).show()
-                        costValue = "" // Limpiamos por si acaso
-                        return@NumberSheet // Detenemos la ejecución aquí
+                    if (costoDouble == null || costoDouble <= 0) {
+                        Toast.makeText(context, "Ingresa un costo válido.", Toast.LENGTH_SHORT).show()
+                        return@NumberSheet
                     }
 
-                    // SIMULACIÓN: Recopilamos todos los datos y los mostramos en un Toast largo.
-                    // En el futuro, aquí es donde llamarías a tu ViewModel para guardar en la DB.
-                    val summary = """
-                    ¡Paseo Solicitado! (Simulación)
-                    - Origen: $origin
-                    - Destino: $destination
-                    - Mascota: ${selectedPet?.name}
-                    - Tipo de Paseo: $selectedWalkType
-                    - Costo: S/ $costValue
-                    - Observaciones: ${observations.ifBlank { "Ninguna" }}
-                """.trimIndent()
-
-                    Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
-
-                    //Para mostrar en el lodCat (para devs)
-                    Log.d("RequestWalkDebug", summary)
-
-                    // Limpiamos todos los campos para la próxima solicitud
-                    origin = ""
-                    destination = ""
-                    selectedPet = null
-                    observations = ""
-                    costValue = ""
+                    // --- 3. LLAMA AL VIEWMODEL PARA GUARDAR ---
+                    requestWalkViewModel.guardarSolicitud(
+                        clienteId = loggedInUserId,
+                        origen = origin,
+                        destino = destination,
+                        mascotaNombre = selectedPet?.name ?: "Mascota no especificada",
+                        tipoPaseo = selectedWalkType,
+                        observaciones = observations,
+                        costoOfrecido = costoDouble
+                    ) { success, message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        if (success) {
+                            // --- 4. NAVEGA A LA NUEVA PANTALLA ---
+                            navController.navigate("tarifas_ofrecidas")
+                        }
+                    }
                 }
             )
         }
@@ -806,9 +790,8 @@ fun NumberSheet(
             TextField(
                 value = value,
                 onValueChange = { if (it.all(Char::isDigit)) onValueChange(it) },
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    keyboardType = KeyboardType.Number
-                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done), // 1. Define la acción
+                keyboardActions = KeyboardActions(onDone = { onConfirm() }), // 2. Llama a onConfirm cuando se presiona
                 modifier = Modifier.fillMaxWidth()
             )
 

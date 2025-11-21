@@ -42,6 +42,7 @@ import com.example.appguaugo.data.entity.ClienteEntity
 import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.presentation.home.HomeScreen
 import com.example.appguaugo.presentation.home.RequestWalkScreen
+import com.example.appguaugo.presentation.home.TarifasOfrecidasCliView
 import com.example.appguaugo.presentation.login.LoginScreen
 import com.example.appguaugo.presentation.login.OlvidoPasswordScreen
 import com.example.appguaugo.presentation.login.RegisterScreen
@@ -67,7 +68,8 @@ class MainActivity : ComponentActivity() {
     private val repository: ClienteRepository by lazy {
         ClienteRepository(
             GuauApp.db.clienteDao(),
-            GuauApp.db.mascotaDao())
+            GuauApp.db.mascotaDao(),
+            GuauApp.db.solicitudPaseoDao())
     }
     private val mainViewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
@@ -319,6 +321,13 @@ class MainActivity : ComponentActivity() {
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
+
+                        composable("tarifas_ofrecidas") {
+                            TarifasOfrecidasCliView(
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
 
 
                         composable("searching") {

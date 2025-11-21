@@ -15,4 +15,5 @@ class Converters {
         // Convierte de Date (código) a Long (base de datos)
         return date?.time
     }
+
 }
