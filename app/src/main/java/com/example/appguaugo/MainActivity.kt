@@ -38,6 +38,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.appguaugo.application.GuauApp
 import com.example.appguaugo.data.repository.ClienteRepository
+import com.example.appguaugo.presentation.home.MainHomeScreen
 import com.example.appguaugo.presentation.home.RequestWalkScreen
 import com.example.appguaugo.presentation.home.TarifasOfrecidasCliView
 import com.example.appguaugo.presentation.login.LoginScreen
@@ -233,47 +234,9 @@ class MainActivity : ComponentActivity() {
                         // En tu MainActivity.kt, dentro del NavHost
                         // ... (tus otras rutas como "splash", "login", "register", "forgot_password")
                         composable("home") {
-                            RequestWalkScreen(
-                                navController = navController,
-                                // 1. Acción para el menú: Ir a Perfil
-                                onProfileClick = {
-                                    val prefs = context.getSharedPreferences("mi_app_prefs", MODE_PRIVATE)
-                                    val loggedInUserId = prefs.getInt("logged_in_user_id", -1)
-                                    if (loggedInUserId != -1) {
-                                        // 2. Navegar a la pantalla de perfil, pasando el ID
-                                        navController.navigate("profile/$loggedInUserId")
-                                    } else {
-                                        // Caso de seguridad: si no hay ID, volver a login
-                                        Toast.makeText(context, "Error de sesión, por favor inicie sesión de nuevo.", Toast.LENGTH_LONG).show()
-                                        navController.navigate("login") { popUpTo(0) }
-                                    }
-                                },
-                                // 2. Acción para el menú: Ir a Mis Mascotas
-                                onMyPetsClick = {
-                                    navController.navigate("my_pets")
-                                    Log.d("MainActivity", "Navegando a la pantalla de Mis Mascotas")
-                                },
-                                // DE MOMENTO NO SE USARA ESTA LOGICA!!!!
-                                /*// 3. Acción para el menú: Cerrar Sesión
-                                onLogoutClick = {
-                                    // Aquí ejecutas la lógica de cierre de sesión
-                                    //mainViewModel.logout()
-                                    //Log.d("MainActivity", "Cerrando sesión del usuario.")
+                            // En MainActivity.kt, dentro de AppNavigation
+                            MainHomeScreen(navController = navController)
 
-                                    // Navegas de vuelta al login, limpiando toda la pila de navegación
-                                    *//*navController.navigate("login") {
-                                        popUpTo("home") { inclusive = true }
-                                    }
-                                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()*//*
-                                },*/
-                                // 4. Acción del botón principal del formulario
-                                onRequestWalkClick = {
-                                    //.d("MainActivity", "Solicitando un nuevo paseo...")
-                                    //Toast.makeText(context, "Buscando un paseador...", Toast.LENGTH_SHORT).show()
-                                    // Aquí llamarías a tu ViewModel para procesar la solicitud
-                                    // mainViewModel.requestWalk(origen, destino, mascota, etc.)
-                                }
-                            )
                         }
 
                         // --- ▼▼▼ DESTINOS PARA LAS OPCIONES DEL MENÚ ▼▼▼ ---

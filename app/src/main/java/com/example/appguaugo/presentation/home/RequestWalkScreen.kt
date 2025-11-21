@@ -54,7 +54,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -67,6 +73,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.ImagePainter
 import com.example.appguaugo.application.GuauApp
+import com.example.appguaugo.application.UserRole
 import com.example.appguaugo.data.repository.ClienteRepository
 import com.example.appguaugo.viewmodel.ProfileUiState
 import com.example.appguaugo.viewmodel.ProfileViewModel
@@ -94,11 +101,8 @@ val walkTypes = listOf("Corto (30 min)", "Normal (1 h)", "Extendido (2h)")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class) // <-- Añade)
 @Composable
 fun RequestWalkScreen(
-    navController: NavController,
-    onProfileClick: () -> Unit,
-    onMyPetsClick: () -> Unit,
-    // onLogoutClick: () -> Unit, // no se usara este logica de momento!
-    onRequestWalkClick: () -> Unit
+    navController: NavController, // <<< Lo necesitamos para la navegación
+    openDrawer: () -> Unit  // NUEVO PARAMETRO
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -222,55 +226,14 @@ fun RequestWalkScreen(
         }
     }
 
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            // 3. CONTENIDO DEL MENÚ (definido más abajo)
-            AppDrawerContent(
-                userName = userName,
-                onProfileClick = {
-                    onProfileClick()
-                    scope.launch { drawerState.close() }
-                },
-                onMyPetsClick = {
-                    onMyPetsClick()
-                    scope.launch { drawerState.close() }
-                },
-                onLogoutClick = {
-                    // 1. Limpia los datos locales (SharedPreferences, etc.)
-                    // Es buena práctica hacerlo para borrar tokens o datos de usuario.
-                    val prefs = context.getSharedPreferences("mi_app_prefs", Context.MODE_PRIVATE)
-                    prefs.edit().apply {
-                        remove("user_token") // Usa la clave real de tu token
-                        // remove("cualquier_otro_dato")
-                        apply()
-                    }
-
-                    // 2. Navega a la pantalla de login y limpia el historial
-                    navController.navigate("login") { // "login" debe ser la ruta de tu pantalla de login
-                        popUpTo(0) {
-                            inclusive = true
-                        }
-                        launchSingleTop = true
-                    }
-                }
-                // NO SE VA USAR DE MOMENTO ESA LOGICA!!!!
-                /*onLogoutClick = {
-                    onLogoutClick()
-                    scope.launch { drawerState.close() }
-                }*/
-            )
-        }
-    ) {
-        val sheetState = rememberStandardBottomSheetState (
-            // Inicia el panel en un estado parcialmente expandido
-            initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = true
-        )
-        val scaffoldState = rememberBottomSheetScaffoldState(
-            bottomSheetState = sheetState
-        )
+    val sheetState = rememberStandardBottomSheetState (
+        // Inicia el panel en un estado parcialmente expandido
+        initialValue = SheetValue.PartiallyExpanded,
+        skipHiddenState = true
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = sheetState
+    )
 
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
@@ -319,11 +282,7 @@ fun RequestWalkScreen(
                 ) // Tu mapa
                 // 4. ICONO PARA ABRIR EL MENÚ
                 IconButton(
-                    onClick = {
-                        scope.launch {
-                            drawerState.open()
-                        }
-                    },
+                    onClick =  openDrawer, // CAMBIO CLAVE!!
                     modifier = Modifier
                         .padding(16.dp)
                         .align(Alignment.TopStart)
@@ -390,8 +349,6 @@ fun RequestWalkScreen(
             )
         }
 
-    }
-
 }
 
 // --- NUEVO COMPOSABLE: CONTENIDO DEL MENÚ LATERAL ---
@@ -401,8 +358,11 @@ fun AppDrawerContent(
     userName: String,
     onProfileClick: () -> Unit,
     onMyPetsClick: () -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    currentRole: UserRole,
+    onSwitchRole: () -> Unit
 ) {
+    var showConfirmDialog by remember { mutableStateOf(false) }
     ModalDrawerSheet {
         // 1. CABECERA DEL MENÚ
         Column(
@@ -431,7 +391,7 @@ fun AppDrawerContent(
 
         Spacer(Modifier.height(16.dp))
 
-        // 2. ÍTEMS DE NAVEGACIÓN
+
         NavigationDrawerItem(
             icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
             label = { Text("Mi Perfil") },
@@ -439,16 +399,36 @@ fun AppDrawerContent(
             onClick = onProfileClick
         )
 
-        NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Pets, contentDescription = null) },
-            label = { Text("Mis Mascotas") },
-            selected = false,
-            onClick = onMyPetsClick,
-            // badge = { Text("3") } // Opcional: para mostrar un contador
-        )
+        // --- Ítems de Navegación del Cliente ---
+        // Solo se muestran si el rol es CLIENTE
+        if (currentRole == UserRole.CLIENTE) {
+            NavigationDrawerItem(
+                icon = { Icon(Icons.Default.Pets, contentDescription = null) },
+                label = { Text("Mis Mascotas") },
+                selected = false,
+                onClick = onMyPetsClick,
+                // badge = { Text("3") } // Opcional: para mostrar un contador
+            )
+        }
+
+        if (currentRole == UserRole.PASEADOR) {
+            NavigationDrawerItem(
+                icon = { Icon(Icons.Default.Star, contentDescription = null) },
+                label = { Text("Mis Paseos") },
+                selected = false,
+                onClick = { /* TODO: Navegar a la pantalla de calificaciones del paseador */ }
+            )
+        }
 
         // Divisor para separar las acciones principales del cierre de sesión
         Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        RolSwitchButton(
+            currentRole = currentRole, // Pasas el estado actual
+            onClickConfirm = {
+                showConfirmDialog = true
+            }
+        )
 
         // 3. ACCIÓN DE CERRAR SESIÓN
         NavigationDrawerItem(
@@ -456,6 +436,83 @@ fun AppDrawerContent(
             label = { Text("Cerrar Sesión") },
             selected = false,
             onClick = onLogoutClick
+        )
+    }
+
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            // --- Acción cuando el usuario quiere cerrar el diálogo (clic fuera, botón atrás) ---
+            onDismissRequest = {
+                showConfirmDialog = false
+            },
+            // --- Título del diálogo ---
+            title = {
+                Text(text = "Confirmar Cambio de Rol")
+            },
+            // --- Mensaje principal del diálogo ---
+            text = {
+                Text("¿Estás seguro de que quieres cambiar al modo ${if (currentRole == UserRole.CLIENTE) "Paseador" else "Cliente"}?")
+            },
+            // --- Botón de Confirmación ---
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmDialog = false // Cierra el diálogo
+                        onSwitchRole()        // ¡Ahora sí, ejecuta la acción de cambio!
+                    }
+                ) {
+                    Text("Sí, cambiar")
+                }
+            },
+            // --- Botón de Cancelación ---
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmDialog = false // Simplemente cierra el diálogo
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun RolSwitchButton(
+    currentRole: UserRole,
+    onClickConfirm: () -> Unit // Función que se llama si el usuario CONFIRMA el cambio
+) {
+    // Definir el texto del botón basado en el rol actual
+    val buttonText = if (currentRole == UserRole.CLIENTE) {
+        "CAMBIAR A MODO PASEADOR"
+    } else {
+        "VOLVER A MODO CLIENTE"
+    }
+
+    // Estilo visual
+    val buttonColor = Color(0xFFFDC000) // Amarillo/Naranja
+
+    // Aquí es donde se llama a la función de CONFIRMACIÓN
+    Button(
+        onClick = onClickConfirm,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = buttonColor,
+            contentColor = Color.White
+        ),
+        // Shape hace el borde redondeado como un óvalo
+        shape = RoundedCornerShape(percent = 50),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .height(56.dp)
+    ) {
+        // Solo el texto, sin el Switch
+        Text(
+            text = buttonText,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
         )
     }
 }
